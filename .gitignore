@@ -1,0 +1,23 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# build outputs
+.next
+dist
+build
+
+# env files
+.env
+.env.local
+.env.*.local
+
+# turbo
+.turbo
+
+# claude code
+.claude
+
+# misc
+.DS_Store
+*.log
