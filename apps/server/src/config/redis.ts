@@ -15,9 +15,13 @@ export async function connectRedis(): Promise<void> {
     throw new Error('REDIS_URL environment variable is not set');
   }
 
+  // Upstash uses rediss:// (TLS). ioredis needs tls option when the scheme is rediss.
+  const tls = url.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined;
+
   _client = new Redis(url, {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
+    tls,
   });
 
   _client.on('error', (err) => console.error('[Redis] Error:', err));
