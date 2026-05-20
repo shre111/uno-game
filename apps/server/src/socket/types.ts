@@ -1,0 +1,107 @@
+import type { GuestPayload } from '../middleware/auth';
+import type { CardColor, PersonalizedGameState } from '@uno-game/game-logic';
+
+// ── Inbound event payloads ──────────────────────────────────────────────────
+
+export interface CreateRoomData {
+  username: string;
+  avatar: string;
+  maxPlayers?: number;
+  private?: boolean;
+}
+
+export interface JoinRoomData {
+  code: string;
+  username: string;
+  avatar: string;
+}
+
+export interface PlayCardData {
+  cardIndex: number;
+  chosenColor?: CardColor;
+}
+
+export interface ChatData {
+  message: string;
+}
+
+// ── Outbound event payloads ─────────────────────────────────────────────────
+
+export interface RoomPlayerPayload {
+  token: string;
+  username: string;
+  avatar: string;
+  isHost: boolean;
+}
+
+export interface RoomPayload {
+  code: string;
+  host: string;
+  status: string;
+  players: RoomPlayerPayload[];
+  maxPlayers: number;
+  settings: { maxPlayers: number; private: boolean };
+}
+
+export interface GameEndPayload {
+  roomCode: string;
+  winner: string;
+  players: Array<{ token: string; username: string; position: number; handCount: number }>;
+  duration: number;
+}
+
+export interface UnoCallPayload {
+  playerToken: string;
+  username: string;
+}
+
+export interface ChatMessagePayload {
+  username: string;
+  avatar: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface SocketError {
+  code: string;
+  message: string;
+}
+
+// ── Typed Socket.io interfaces ──────────────────────────────────────────────
+
+export interface ClientToServerEvents {
+  'room:create': (data: CreateRoomData) => void;
+  'room:join': (data: JoinRoomData) => void;
+  'room:leave': () => void;
+  'game:start': () => void;
+  'game:playCard': (data: PlayCardData) => void;
+  'game:drawCard': () => void;
+  'game:callUNO': () => void;
+  'game:challengeUNO': () => void;
+  'chat:send': (data: ChatData) => void;
+}
+
+export interface ServerToClientEvents {
+  'room:created': (room: RoomPayload) => void;
+  'room:updated': (room: RoomPayload) => void;
+  'game:started': (state: PersonalizedGameState) => void;
+  'game:stateUpdate': (state: PersonalizedGameState) => void;
+  'game:ended': (result: GameEndPayload) => void;
+  'game:unoCall': (data: UnoCallPayload) => void;
+  'chat:message': (data: ChatMessagePayload) => void;
+  'error': (error: SocketError) => void;
+  'auth:token': (token: string) => void;
+}
+
+export interface SocketData {
+  guest: GuestPayload;
+  currentRoom?: string;
+  newToken?: string;
+}
+
+// ── Convenience aliases ─────────────────────────────────────────────────────
+
+import type { Server, Socket } from 'socket.io';
+
+export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
+export type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
