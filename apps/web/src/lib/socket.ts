@@ -33,8 +33,8 @@ export function disconnectSocket() {
 
 // Typed emit helpers
 export const emit = {
-  createRoom: (username: string, avatar: string) =>
-    getSocket().emit('room:create', { username, avatar }),
+  createRoom: (username: string, avatar: string, variant = 'Classic', maxPlayers = 6) =>
+    getSocket().emit('room:create', { username, avatar, variant, maxPlayers }),
 
   joinRoom: (roomCode: string, username: string, avatar: string) =>
     getSocket().emit('room:join', { roomCode, username, avatar }),

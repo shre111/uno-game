@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
+// Game-end overlay is handled by the parent room page (with confetti)
 import { DrawPile, DiscardPile } from './Deck';
 import { PlayerHand, OpponentHand } from './Hand';
 import { TurnTimer, GameChat } from './PlayerList';
@@ -27,7 +28,6 @@ const POSITION_CLASSES: Record<string, string> = {
 export function GameBoard() {
   const gameState = useGameStore((s) => s.gameState);
   const unoAlert = useGameStore((s) => s.unoAlert);
-  const gameEndResult = useGameStore((s) => s.gameEndResult);
   const myToken = useAuthStore((s) => s.token);
 
   if (!gameState) return null;
@@ -119,38 +119,6 @@ export function GameBoard() {
             exit={{ y: -40, opacity: 0 }}
           >
             {gameState.players.find((p) => p.token === unoAlert)?.username ?? '?'} — UNO!
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* game end overlay */}
-      <AnimatePresence>
-        {gameEndResult && (
-          <motion.div
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/80"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <motion.div
-              className="bg-gray-900 rounded-2xl p-10 flex flex-col items-center gap-4 shadow-2xl max-w-sm w-full mx-4"
-              initial={{ scale: 0.7 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 300 }}
-            >
-              <div className="text-6xl">🏆</div>
-              <h2 className="text-white text-2xl font-black">{gameEndResult.winnerUsername} wins!</h2>
-              <div className="w-full">
-                {gameEndResult.players.map((p) => (
-                  <div key={p.token} className="flex justify-between text-white/70 text-sm py-1 border-b border-white/10">
-                    <span>{p.username}</span>
-                    <span>{p.cardCount} cards left</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-white/40 text-sm">
-                Game lasted {Math.round(gameEndResult.durationMs / 1000)}s
-              </p>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
