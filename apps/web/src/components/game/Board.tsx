@@ -18,11 +18,11 @@ const OPPONENT_POSITIONS: Record<number, string[]> = {
 };
 
 const POSITION_CLASSES: Record<string, string> = {
-  'top-center': 'top-4 left-1/2 -translate-x-1/2',
-  'top-left': 'top-4 left-24',
-  'top-right': 'top-4 right-24',
-  'left-center': 'left-4 top-1/2 -translate-y-1/2',
-  'right-center': 'right-4 top-1/2 -translate-y-1/2',
+  'top-center': 'top-16 left-1/2 -translate-x-1/2',
+  'top-left': 'top-16 left-20',
+  'top-right': 'top-16 right-20',
+  'left-center': 'left-3 top-1/2 -translate-y-1/2',
+  'right-center': 'right-3 top-1/2 -translate-y-1/2',
 };
 
 export function GameBoard() {
@@ -61,27 +61,20 @@ export function GameBoard() {
         <TurnTimer />
       </div>
 
-      {/* turn badge — centered below timer bar */}
-      <div className="absolute top-3 left-0 right-0 flex justify-center z-10 pointer-events-none">
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold shadow-lg border ${
+      {/* turn badge */}
+      <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
+        <div className={`px-4 py-1 rounded-full text-xs font-bold shadow border ${
           amEliminated
             ? 'bg-gray-900/80 border-gray-600 text-gray-400'
             : isMyTurn
-              ? 'bg-green-700/80 border-green-400/50 text-green-100'
-              : 'bg-black/60 border-white/10 text-white/70'
+              ? 'bg-green-600/90 border-green-400/60 text-white'
+              : 'bg-black/70 border-white/10 text-white/60'
         }`}>
-          {!amEliminated && (
-            <span className="text-sm leading-none">
-              {gameState.players[gameState.currentPlayerIndex]?.avatar ?? ''}
-            </span>
-          )}
-          <span>
-            {amEliminated
-              ? 'You are eliminated'
-              : isMyTurn
-                ? 'Your turn'
-                : `${gameState.players[gameState.currentPlayerIndex]?.username ?? '...'}'s turn`}
-          </span>
+          {amEliminated
+            ? 'Eliminated'
+            : isMyTurn
+              ? 'Your turn'
+              : `${gameState.players[gameState.currentPlayerIndex]?.username ?? '...'}'s turn`}
         </div>
       </div>
 

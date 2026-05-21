@@ -97,57 +97,54 @@ interface OpponentHandProps {
 export function OpponentHand({ player, isCurrentPlayer }: OpponentHandProps) {
   const isDarkSide = useGameStore((s) => s.gameState?.side === 'dark');
   const dummyCard: CardType = { id: 'back', color: 'red', value: '0' };
-  const MAX_VISIBLE = 5;
+  const MAX_VISIBLE = 6;
   const visible = Math.min(player.handCount, MAX_VISIBLE);
 
   return (
     <motion.div
-      className="flex flex-col items-center gap-2"
-      animate={isCurrentPlayer ? { scale: 1.04 } : { scale: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+      className="flex flex-col items-center gap-3"
+      animate={isCurrentPlayer ? { scale: 1.03, y: -2 } : { scale: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 280, damping: 22 }}
     >
-      {/* Avatar bubble with active ring */}
-      <div className="relative">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-lg ${
-          isCurrentPlayer
-            ? 'ring-2 ring-yellow-400 bg-yellow-400/20'
-            : 'bg-white/10'
+      {/* Name tag — one cohesive pill */}
+      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-lg backdrop-blur-sm ${
+        isCurrentPlayer
+          ? 'bg-yellow-400/20 border-yellow-400/70 text-white'
+          : 'bg-black/50 border-white/15 text-white/75'
+      }`}>
+        <span className="text-lg leading-none">{player.avatar}</span>
+        <span className="text-sm font-bold tracking-wide max-w-[100px] truncate">{player.username}</span>
+        <span className={`text-xs font-black px-1.5 py-0.5 rounded-full leading-none ${
+          isCurrentPlayer ? 'bg-yellow-400 text-black' : 'bg-white/15 text-white/60'
         }`}>
-          {player.avatar}
-        </div>
-        {isCurrentPlayer && (
-          <motion.div
-            className="absolute inset-0 rounded-full ring-2 ring-yellow-300"
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 1.2, repeat: Infinity }}
-          />
-        )}
-        {/* Card count badge */}
-        <div className="absolute -bottom-1 -right-1 bg-gray-900 border border-white/20 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center leading-none">
           {player.handCount}
-        </div>
-      </div>
-
-      {/* Name + status */}
-      <div className="flex items-center gap-1">
-        <span className="text-white text-xs font-semibold drop-shadow max-w-[80px] truncate">{player.username}</span>
+        </span>
         {player.hasCalledUno && (
-          <span className="text-[10px] bg-red-600 text-white px-1 py-0.5 rounded font-black leading-none">UNO!</span>
+          <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full font-black leading-none">UNO!</span>
         )}
         {!player.isConnected && (
-          <span className="text-[10px] bg-gray-700 text-white/60 px-1 rounded leading-none">•••</span>
+          <span className="text-xs bg-gray-600 text-white/50 px-1.5 py-0.5 rounded-full leading-none">offline</span>
         )}
       </div>
 
-      {/* Card fan */}
+      {/* Active turn glow bar */}
+      {isCurrentPlayer && (
+        <motion.div
+          className="w-full h-0.5 rounded-full bg-yellow-400/60"
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 1.2, repeat: Infinity }}
+        />
+      )}
+
+      {/* Card fan — full-size cards */}
       <div className="flex items-end">
         {Array.from({ length: visible }).map((_, i) => (
-          <div key={i} style={{ marginLeft: i > 0 ? -32 : 0, zIndex: i }}>
-            <Card card={dummyCard} isBack isDarkSide={isDarkSide} small />
+          <div key={i} style={{ marginLeft: i > 0 ? -36 : 0, zIndex: i }}>
+            <Card card={dummyCard} isBack isDarkSide={isDarkSide} />
           </div>
         ))}
         {player.handCount > MAX_VISIBLE && (
-          <span className="text-white/50 text-xs self-center ml-1 font-semibold">+{player.handCount - MAX_VISIBLE}</span>
+          <span className="text-white/60 text-sm font-bold self-center ml-2">+{player.handCount - MAX_VISIBLE}</span>
         )}
       </div>
     </motion.div>
