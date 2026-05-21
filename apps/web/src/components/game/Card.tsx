@@ -4,10 +4,16 @@ import { motion } from 'framer-motion';
 import type { Card as CardType } from '../../types';
 
 const COLOR_BG: Record<string, string> = {
+  // Light side
   red: '#E8362A',
   blue: '#1A6BB5',
   green: '#2BA350',
   yellow: '#F7C300',
+  // Dark side
+  pink: '#D81B60',
+  orange: '#E65100',
+  teal: '#00695C',
+  purple: '#6A1B9A',
 };
 
 const COLOR_DARK: Record<string, string> = {
@@ -15,30 +21,47 @@ const COLOR_DARK: Record<string, string> = {
   blue: '#0E4A8A',
   green: '#1A7038',
   yellow: '#C89B00',
+  pink: '#AD1457',
+  orange: '#BF360C',
+  teal: '#004D40',
+  purple: '#4A148C',
 };
 
 function getLabel(value: string): string {
   if (value === 'skip') return '⊘';
+  if (value === 'skipAll') return '⊘⊘';
   if (value === 'reverse') return '↺';
+  if (value === 'draw1') return '+1';
   if (value === 'draw2') return '+2';
+  if (value === 'draw4') return '+4';
+  if (value === 'draw5') return '+5';
+  if (value === 'draw6') return '+6';
+  if (value === 'draw10') return '+10';
   if (value === 'wild') return 'W';
   if (value === 'wild4') return '+4';
+  if (value === 'wildDraw2') return 'W+2';
+  if (value === 'wildDrawColor') return 'W🎨';
   if (value === 'flip') return '↕';
+  if (value === 'discardAll') return '🗑';
   return value;
 }
 
 function getLabelFontSize(value: string, large: boolean): number {
   const base = large ? 28 : 13;
-  if (value === 'reverse' || value === 'skip' || value === 'flip') return large ? 24 : 12;
-  if (value === 'draw2') return large ? 22 : 11;
-  if (value === 'wild4') return large ? 18 : 10;
+  if (['reverse', 'skip', 'flip', 'discardAll'].includes(value)) return large ? 24 : 12;
+  if (['skipAll'].includes(value)) return large ? 18 : 9;
+  if (['draw2', 'draw1', 'draw5', 'draw4', 'draw6'].includes(value)) return large ? 22 : 11;
+  if (['wild4', 'wildDraw2', 'draw10', 'wildDrawColor'].includes(value)) return large ? 16 : 8;
   return base;
 }
 
 // 4-quadrant wild oval matching real UNO card
-function WildCenter({ value, w, h }: { value: string; w: number; h: number }) {
-  const label = value === 'wild4' ? '+4' : 'W';
-  const fontSize = w > 40 ? 18 : 9;
+function WildCenter({ value, w, h, darkSide }: { value: string; w: number; h: number; darkSide?: boolean }) {
+  const label = getLabel(value);
+  const fontSize = w > 40 ? (label.length > 2 ? 12 : 18) : (label.length > 2 ? 6 : 9);
+  const q = darkSide
+    ? ['#D81B60', '#E65100', '#00695C', '#6A1B9A']
+    : ['#E8362A', '#F7C300', '#1A6BB5', '#2BA350'];
   return (
     <div style={{
       width: w, height: h,
@@ -48,10 +71,10 @@ function WildCenter({ value, w, h }: { value: string; w: number; h: number }) {
       position: 'relative',
       border: '2px solid rgba(255,255,255,0.6)',
     }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '50%', background: '#E8362A' }} />
-      <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '50%', background: '#F7C300' }} />
-      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '50%', height: '50%', background: '#1A6BB5' }} />
-      <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '50%', background: '#2BA350' }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '50%', height: '50%', background: q[0] }} />
+      <div style={{ position: 'absolute', top: 0, right: 0, width: '50%', height: '50%', background: q[1] }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '50%', height: '50%', background: q[2] }} />
+      <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '50%', background: q[3] }} />
       <div style={{
         position: 'absolute', inset: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -72,11 +95,12 @@ interface CardProps {
   isPlayable?: boolean;
   isSelected?: boolean;
   isBack?: boolean;
+  isDarkSide?: boolean;
   onClick?: () => void;
   small?: boolean;
 }
 
-export function Card({ card, isPlayable = false, isSelected = false, isBack = false, onClick, small = false }: CardProps) {
+export function Card({ card, isPlayable = false, isSelected = false, isBack = false, isDarkSide = false, onClick, small = false }: CardProps) {
   const isWild = card.color === 'wild';
   const bg = isWild ? '#1C1C1C' : (COLOR_BG[card.color] ?? '#555');
   const darkBg = isWild ? '#000' : (COLOR_DARK[card.color] ?? '#333');
@@ -99,7 +123,7 @@ export function Card({ card, isPlayable = false, isSelected = false, isBack = fa
         borderRadius: BR,
         border: `${BW}px solid white`,
         background: isBack
-          ? '#E8362A'
+          ? (isDarkSide ? '#1a1a3a' : '#E8362A')
           : bg,
         position: 'relative',
         overflow: 'hidden',
@@ -125,22 +149,20 @@ export function Card({ card, isPlayable = false, isSelected = false, isBack = fa
         />
       )}
 
-      {/* Card back - physical UNO style */}
+      {/* Card back */}
       {isBack && (
         <>
-          {/* Dark border inset */}
           <div style={{
             position: 'absolute', inset: 4,
-            border: `2px solid ${darkBg}`,
+            border: `2px solid ${isDarkSide ? '#3a3a6a' : darkBg}`,
             borderRadius: BR - 2,
           }} />
-          {/* UNO oval */}
           <div style={{
             position: 'absolute', inset: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <div style={{
-              background: '#F7C300',
+              background: isDarkSide ? '#6A1B9A' : '#F7C300',
               borderRadius: '50%',
               width: small ? 26 : 48,
               height: small ? 36 : 64,
@@ -150,7 +172,7 @@ export function Card({ card, isPlayable = false, isSelected = false, isBack = fa
               border: '2px solid rgba(0,0,0,0.3)',
             }}>
               <span style={{
-                color: '#E8362A', fontWeight: 900,
+                color: isDarkSide ? '#D81B60' : '#E8362A', fontWeight: 900,
                 fontSize: small ? 7 : 13,
                 transform: 'rotate(25deg)',
                 letterSpacing: '-0.5px',
@@ -164,7 +186,6 @@ export function Card({ card, isPlayable = false, isSelected = false, isBack = fa
       {/* Card face */}
       {!isBack && (
         <>
-          {/* Background inner border (darker shade) */}
           <div style={{
             position: 'absolute', inset: 4,
             borderRadius: BR - 2,
@@ -173,12 +194,10 @@ export function Card({ card, isPlayable = false, isSelected = false, isBack = fa
           }} />
 
           {isWild ? (
-            /* Wild card center */
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <WildCenter value={card.value} w={ovalW} h={ovalH} />
+              <WildCenter value={card.value} w={ovalW} h={ovalH} darkSide={isDarkSide} />
             </div>
           ) : (
-            /* Colored card — white oval with value */
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{
                 width: ovalW, height: ovalH,
@@ -203,22 +222,22 @@ export function Card({ card, isPlayable = false, isSelected = false, isBack = fa
             </div>
           )}
 
-          {/* Top-left corner value */}
+          {/* Top-left corner */}
           <div style={{ position: 'absolute', top: 3, left: 5, lineHeight: 1 }}>
             <span style={{
               color: 'white', fontWeight: 900, fontSize: cornerSize,
               textShadow: '0 1px 3px rgba(0,0,0,0.5)',
               display: 'block',
-            }}>{isWild ? (card.value === 'wild4' ? '+4' : 'W') : label}</span>
+            }}>{isWild ? label : label}</span>
           </div>
 
-          {/* Bottom-right corner value (rotated) */}
+          {/* Bottom-right corner (rotated) */}
           <div style={{ position: 'absolute', bottom: 3, right: 5, lineHeight: 1, transform: 'rotate(180deg)' }}>
             <span style={{
               color: 'white', fontWeight: 900, fontSize: cornerSize,
               textShadow: '0 1px 3px rgba(0,0,0,0.5)',
               display: 'block',
-            }}>{isWild ? (card.value === 'wild4' ? '+4' : 'W') : label}</span>
+            }}>{isWild ? label : label}</span>
           </div>
         </>
       )}

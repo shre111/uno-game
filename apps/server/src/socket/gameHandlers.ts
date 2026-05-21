@@ -146,9 +146,20 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
 
       const state = raw as unknown as GameState;
       const engine = getEngine(state.variant);
-      const { state: newState, drawnCards } = engine.drawCard(state, socket.data.guest.token);
+      const result = engine.drawCard(state, socket.data.guest.token);
+      const { state: newState, drawnCards } = result;
+
+      // Mercy: player tried to draw when they already have a playable card
+      if (state.variant === 'Mercy' && 'noAction' in result && result.noAction) {
+        return emit('HAS_PLAYABLE_CARD', 'You have a playable card — play it');
+      }
 
       if (drawnCards.length === 0) return emit('NOT_YOUR_TURN', 'It is not your turn');
+
+      if (newState.status === 'finished') {
+        await finalizeGame(io, newState, roomCode);
+        return;
+      }
 
       await saveAndBroadcast(io, newState);
     } catch (err) {
@@ -196,27 +207,6 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       await saveAndBroadcast(io, newState);
     } catch (err) {
       emit('INTERNAL_ERROR', err instanceof Error ? err.message : 'Failed to challenge UNO');
-    }
-  });
-
-  // ── game:callMercy ─────────────────────────────────────────────────────────
-  socket.on('game:callMercy', async () => {
-    try {
-      const roomCode = socket.data.currentRoom;
-      if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
-
-      const raw = await getGameState(roomCode);
-      if (!raw) return emit('GAME_NOT_STARTED', 'No active game in this room');
-
-      const state = raw as unknown as GameState;
-      if (state.variant !== 'Mercy') return emit('INVALID_VARIANT', 'Mercy is only available in Mercy variant');
-
-      const { state: newState, error } = MercyUNO.callMercy(state, socket.data.guest.token);
-      if (error) return emit(error, `Cannot call Mercy: ${error}`);
-
-      await saveAndBroadcast(io, newState);
-    } catch (err) {
-      emit('INTERNAL_ERROR', err instanceof Error ? err.message : 'Failed to call Mercy');
     }
   });
 }

@@ -58,7 +58,5 @@ export const emit = {
 
   challengeUNO: () => getSocket().emit('game:challengeUNO'),
 
-  callMercy: () => getSocket().emit('game:callMercy'),
-
   sendChat: (message: string) => getSocket().emit('chat:send', { message }),
 };

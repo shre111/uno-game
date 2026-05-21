@@ -81,7 +81,6 @@ export interface ClientToServerEvents {
   'game:drawCard': () => void;
   'game:callUNO': () => void;
   'game:challengeUNO': () => void;
-  'game:callMercy': () => void;
   'chat:send': (data: ChatData) => void;
 }
 

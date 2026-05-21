@@ -39,8 +39,17 @@ export function GameBoard() {
   const isMyTurn = currentTurnToken === myToken;
   const myHandCount = gameState.myHand.length;
   const showUnoButton = myHandCount === 1;
-  const showMercyButton = isMyTurn && (gameState.canCallMercy ?? false);
   const isDarkSide = gameState.side === 'dark';
+  const eliminated = gameState.eliminated ?? [];
+  const amEliminated = eliminated.includes(myToken ?? '');
+
+  // Mercy: show draw indicator when draw is pending and it's my turn
+  const pendingDraw = gameState.pendingDrawCount ?? 0;
+  const showPendingDraw = isMyTurn && pendingDraw > 0;
+
+  // Wild Draw Color: show indicator for current player needing to draw
+  const wildDrawColorPending = gameState.wildDrawColorPending;
+  const showWildDrawColor = isMyTurn && !!wildDrawColorPending;
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-green-900" style={{ background: isDarkSide ? 'radial-gradient(ellipse at center, #1a1a3a 0%, #0a0a1a 100%)' : 'radial-gradient(ellipse at center, #1a5c2a 0%, #0d3018 100%)' }}>
@@ -51,7 +60,11 @@ export function GameBoard() {
       <div className="absolute top-0 left-0 right-0 px-4 pt-2 z-10">
         <TurnTimer />
         <div className="text-center text-white/60 text-xs mt-1">
-          {isMyTurn ? 'Your turn' : `${gameState.players[gameState.currentPlayerIndex]?.username ?? '...'}'s turn`}
+          {amEliminated
+            ? 'You have been eliminated'
+            : isMyTurn
+              ? 'Your turn'
+              : `${gameState.players[gameState.currentPlayerIndex]?.username ?? '...'}'s turn`}
         </div>
       </div>
 
@@ -71,21 +84,60 @@ export function GameBoard() {
         </div>
       )}
 
-      {/* Mercy variant: indicator */}
+      {/* Mercy variant: indicator + elimination status */}
       {gameState.variant === 'Mercy' && (
-        <div className="absolute top-8 left-4 z-10 px-3 py-1 rounded-full text-xs font-black border bg-purple-900/80 border-purple-400 text-purple-200">
-          MERCY
+        <div className="absolute top-8 left-4 z-10 flex flex-col gap-1">
+          <div className="px-3 py-1 rounded-full text-xs font-black border bg-purple-900/80 border-purple-400 text-purple-200">
+            SHOW 'EM NO MERCY
+          </div>
+          {eliminated.length > 0 && (
+            <div className="px-3 py-1 rounded-full text-xs border bg-gray-900/80 border-gray-500 text-gray-300">
+              {eliminated.length} eliminated
+            </div>
+          )}
         </div>
       )}
+
+      {/* Pending draw alert for Mercy */}
+      <AnimatePresence>
+        {showPendingDraw && (
+          <motion.div
+            className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-orange-600 text-white font-black text-lg px-6 py-2 rounded-full shadow-xl"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+          >
+            Draw {pendingDraw} or stack!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Wild Draw Color indicator */}
+      <AnimatePresence>
+        {showWildDrawColor && (
+          <motion.div
+            className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-purple-700 text-white font-black text-base px-6 py-2 rounded-full shadow-xl"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+          >
+            Draw until you get {wildDrawColorPending}!
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* opponents */}
       {opponents.map((player, i) => {
         const pos = positions[i];
         if (!pos) return null;
         const isCurrentPlayer = player.token === currentTurnToken;
+        const isEliminated = eliminated.includes(player.token);
         return (
-          <div key={player.token} className={`absolute ${POSITION_CLASSES[pos] ?? ''} z-10`}>
+          <div key={player.token} className={`absolute ${POSITION_CLASSES[pos] ?? ''} z-10 ${isEliminated ? 'opacity-40' : ''}`}>
             <OpponentHand player={player} isCurrentPlayer={isCurrentPlayer} />
+            {isEliminated && (
+              <div className="text-center text-xs text-red-400 font-bold mt-1">ELIMINATED</div>
+            )}
           </div>
         );
       })}
@@ -113,22 +165,6 @@ export function GameBoard() {
             onClick={() => emit.callUNO()}
           >
             UNO!
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Mercy button */}
-      <AnimatePresence>
-        {showMercyButton && (
-          <motion.button
-            className="absolute bottom-56 right-4 z-30 bg-purple-600 hover:bg-purple-500 text-white font-black text-base px-5 py-3 rounded-full shadow-2xl border-2 border-white"
-            initial={{ scale: 0, rotate: 20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => emit.callMercy()}
-          >
-            MERCY
           </motion.button>
         )}
       </AnimatePresence>

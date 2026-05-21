@@ -20,10 +20,12 @@ export function PlayerHand() {
 
   const isMyTurn = gameState.players[gameState.currentPlayerIndex]?.token === myToken;
   const hand = gameState.myHand;
+  const isDarkSide = gameState.side === 'dark';
+  const pendingDraw = gameState.pendingDrawCount ?? 0;
 
   function handleCardClick(card: CardType, index: number) {
     if (!isMyTurn || !gameState) return;
-    const playable = isCardPlayable(card, gameState.topCard, gameState.currentColor);
+    const playable = isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw);
     if (!playable) return;
 
     if (selectedIndex === index) {
@@ -52,7 +54,7 @@ export function PlayerHand() {
     <div className="flex flex-col items-center gap-2">
       <div className="relative flex items-end justify-center" style={{ height: 175 }}>
         {hand.map((card, i) => {
-          const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor);
+          const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw);
           const offset = (i - (hand.length - 1) / 2) * fanOffset;
           const rotation = (i - (hand.length - 1) / 2) * (Math.min(3, 15 / hand.length));
           return (
@@ -66,6 +68,7 @@ export function PlayerHand() {
                 card={card}
                 isPlayable={playable}
                 isSelected={selectedIndex === i}
+                isDarkSide={isDarkSide}
                 onClick={() => handleCardClick(card, i)}
               />
             </motion.div>
@@ -75,7 +78,11 @@ export function PlayerHand() {
 
       <AnimatePresence>
         {colorPickerCard && (
-          <ColorPicker onColorChosen={handleColorChosen} onClose={() => setColorPickerCard(null)} />
+          <ColorPicker
+            onColorChosen={handleColorChosen}
+            onClose={() => setColorPickerCard(null)}
+            isDarkSide={isDarkSide}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -88,6 +95,7 @@ interface OpponentHandProps {
 }
 
 export function OpponentHand({ player, isCurrentPlayer }: OpponentHandProps) {
+  const isDarkSide = useGameStore((s) => s.gameState?.side === 'dark');
   const dummyCard: CardType = { id: 'back', color: 'red', value: '0' };
   const MAX_VISIBLE = 7;
   const visible = Math.min(player.handCount, MAX_VISIBLE);
@@ -112,7 +120,7 @@ export function OpponentHand({ player, isCurrentPlayer }: OpponentHandProps) {
       <div className="flex">
         {Array.from({ length: visible }).map((_, i) => (
           <div key={i} style={{ marginLeft: i > 0 ? -28 : 0, zIndex: i }}>
-            <Card card={dummyCard} isBack small />
+            <Card card={dummyCard} isBack isDarkSide={isDarkSide} small={false} />
           </div>
         ))}
         {player.handCount > MAX_VISIBLE && (

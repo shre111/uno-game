@@ -3,19 +3,29 @@
 import { motion } from 'framer-motion';
 import type { CardColor } from '../../types';
 
-const COLORS: { color: CardColor; bg: string; label: string }[] = [
+const LIGHT_COLORS: { color: CardColor; bg: string; label: string }[] = [
   { color: 'red', bg: '#E74C3C', label: 'Red' },
   { color: 'blue', bg: '#3498DB', label: 'Blue' },
   { color: 'green', bg: '#27AE60', label: 'Green' },
   { color: 'yellow', bg: '#F39C12', label: 'Yellow' },
 ];
 
+const DARK_COLORS: { color: CardColor; bg: string; label: string }[] = [
+  { color: 'pink', bg: '#D81B60', label: 'Pink' },
+  { color: 'orange', bg: '#E65100', label: 'Orange' },
+  { color: 'teal', bg: '#00695C', label: 'Teal' },
+  { color: 'purple', bg: '#6A1B9A', label: 'Purple' },
+];
+
 interface ColorPickerProps {
   onColorChosen: (color: CardColor) => void;
   onClose?: () => void;
+  isDarkSide?: boolean;
 }
 
-export function ColorPicker({ onColorChosen }: ColorPickerProps) {
+export function ColorPicker({ onColorChosen, isDarkSide = false }: ColorPickerProps) {
+  const colors = isDarkSide ? DARK_COLORS : LIGHT_COLORS;
+
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
@@ -31,7 +41,7 @@ export function ColorPicker({ onColorChosen }: ColorPickerProps) {
       >
         <h2 className="text-white text-xl font-bold">Choose a color</h2>
         <div className="flex gap-4">
-          {COLORS.map(({ color, bg, label }) => (
+          {colors.map(({ color, bg, label }) => (
             <motion.button
               key={color}
               className="w-16 h-16 rounded-full shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50"
