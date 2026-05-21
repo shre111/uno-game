@@ -9,6 +9,7 @@ interface GameStore {
   pendingWildCard: { cardIndex: number; card: Card } | null;
   unoAlert: string | null;
   gameEndResult: GameEndResult | null;
+  socketError: string | null;
 
   setRoom: (room: RoomPayload | null) => void;
   setGameState: (state: PersonalizedGameState) => void;
@@ -16,6 +17,7 @@ interface GameStore {
   setPendingWildCard: (data: { cardIndex: number; card: Card } | null) => void;
   setUnoAlert: (token: string | null) => void;
   setGameEndResult: (result: GameEndResult | null) => void;
+  setSocketError: (msg: string | null) => void;
   reset: () => void;
 }
 
@@ -26,6 +28,7 @@ const initial = {
   pendingWildCard: null,
   unoAlert: null,
   gameEndResult: null,
+  socketError: null,
 };
 
 export const useGameStore = create<GameStore>()((set) => ({
@@ -37,6 +40,7 @@ export const useGameStore = create<GameStore>()((set) => ({
   setPendingWildCard: (pendingWildCard) => set({ pendingWildCard }),
   setUnoAlert: (unoAlert) => set({ unoAlert }),
   setGameEndResult: (gameEndResult) => set({ gameEndResult }),
+  setSocketError: (socketError) => set({ socketError }),
   reset: () => set(initial),
 }));
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getSocket, connectSocket } from '../lib/socket';
+import { getSocket, connectSocket, updateSocketAuth } from '../lib/socket';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 import type { RoomPayload, ChatMessage, GameEndResult } from '../types';
@@ -11,7 +11,7 @@ let registered = false;
 
 export function useSocket() {
   const { setAuth } = useAuthStore();
-  const { setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult } = useGameStore();
+  const { setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult, setSocketError } = useGameStore();
 
   useEffect(() => {
     const socket = getSocket();
@@ -19,11 +19,12 @@ export function useSocket() {
     if (!registered) {
       registered = true;
 
-      // Auth — server sends structured object now
+      // Auth — update socket auth so reconnects use the correct JWT
       socket.on('auth:token', ({ token, username, avatar, jwtToken }: {
         token: string; username: string; avatar: string; jwtToken: string;
       }) => {
         setAuth(token, username, avatar, jwtToken);
+        updateSocketAuth(jwtToken);
       });
 
       // Room events
@@ -31,7 +32,7 @@ export function useSocket() {
       socket.on('room:updated', (payload: RoomPayload) => setRoom(payload));
       socket.on('room:left', () => setRoom(null));
 
-      // Game events — server emits 'game:started' for initial state, 'game:stateUpdate' for moves
+      // Game events
       socket.on('game:started', (state: PersonalizedGameState) => setGameState(state));
       socket.on('game:stateUpdate', (state: PersonalizedGameState) => setGameState(state));
 
@@ -61,12 +62,20 @@ export function useSocket() {
         setGameEndResult(transformed);
       });
 
-      // Chat — server now sends playerToken; add client-side id
+      // Chat
       socket.on('chat:message', (msg: Omit<ChatMessage, 'id'>) => {
         addChatMessage({ id: crypto.randomUUID(), ...msg });
+      });
+
+      // Server error events — surface to UI so loading states can reset
+      socket.on('error', (err: { code: string; message: string }) => {
+        const msg = err?.message ?? 'Something went wrong';
+        setSocketError(msg);
+        // Auto-clear after 4 seconds
+        setTimeout(() => setSocketError(null), 4000);
       });
     }
 
     connectSocket();
-  }, [setAuth, setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult]);
+  }, [setAuth, setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult, setSocketError]);
 }
