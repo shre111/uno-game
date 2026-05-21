@@ -70,6 +70,7 @@ export default function HomePage() {
   useSocket();
 
   const room = useGameStore((s) => s.room);
+  const socketError = useGameStore((s) => s.socketError);
   const { reset } = useGameStore();
 
   // Reset stale state on landing
@@ -84,6 +85,14 @@ export default function HomePage() {
   useEffect(() => {
     if (room?.code) router.push(`/lobby/${room.code}`);
   }, [room, router]);
+
+  // Reset loading state when the server reports an error
+  useEffect(() => {
+    if (socketError) {
+      setCreating(false);
+      setJoining(false);
+    }
+  }, [socketError]);
 
   // Create Room form
   const [createUsername, setCreateUsername] = useState('');
@@ -130,6 +139,20 @@ export default function HomePage() {
           <p className="text-white/40 mt-1 text-sm">No account needed — just jump in</p>
         </motion.div>
       </header>
+
+      {/* Error toast */}
+      <AnimatePresence>
+        {socketError && (
+          <motion.div
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white font-semibold text-sm px-5 py-3 rounded-xl shadow-2xl border border-red-400"
+            initial={{ y: -30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -30, opacity: 0 }}
+          >
+            {socketError}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* cards */}
       <main className="flex-1 flex items-start justify-center px-4 pb-12">

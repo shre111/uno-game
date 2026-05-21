@@ -22,6 +22,12 @@ export function getSocket(): Socket {
   return socket;
 }
 
+// Call this when a new JWT arrives so reconnections use the updated token
+export function updateSocketAuth(jwtToken: string) {
+  const s = getSocket();
+  s.auth = { token: jwtToken };
+}
+
 export function connectSocket() {
   getSocket().connect();
 }
