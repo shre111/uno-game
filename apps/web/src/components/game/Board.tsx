@@ -7,7 +7,7 @@ import { emit } from '../../lib/socket';
 // Game-end overlay is handled by the parent room page (with confetti)
 import { DrawPile, DiscardPile } from './Deck';
 import { PlayerHand, OpponentHand } from './Hand';
-import { TurnTimer, GameChat } from './PlayerList';
+import { TurnTimer, GameChat, ChatToast } from './PlayerList';
 
 const OPPONENT_POSITIONS: Record<number, string[]> = {
   2: ['top-center'],
@@ -38,7 +38,7 @@ export function GameBoard() {
   const currentTurnToken = gameState.players[gameState.currentPlayerIndex]?.token;
   const isMyTurn = currentTurnToken === myToken;
   const myHandCount = gameState.myHand.length;
-  const showUnoButton = isMyTurn && myHandCount <= 2;
+  const showUnoButton = myHandCount === 1;
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-green-900" style={{ background: 'radial-gradient(ellipse at center, #1a5c2a 0%, #0d3018 100%)' }}>
@@ -123,7 +123,8 @@ export function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* chat */}
+      {/* chat toast + panel */}
+      <ChatToast />
       <GameChat />
     </div>
   );

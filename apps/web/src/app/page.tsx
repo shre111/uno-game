@@ -167,7 +167,9 @@ export default function HomePage() {
                 <Label>Game Variant</Label>
                 <Select value={variant} onChange={(e) => setVariant(e.target.value)}>
                   {VARIANTS.map((v) => (
-                    <option key={v} value={v} className="bg-gray-900">{v}</option>
+                    <option key={v} value={v} disabled={v !== 'Classic'} className="bg-gray-900">
+                      {v}{v !== 'Classic' ? ' (Coming Soon)' : ''}
+                    </option>
                   ))}
                 </Select>
               </div>
