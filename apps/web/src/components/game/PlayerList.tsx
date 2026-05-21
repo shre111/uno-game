@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
+import type { ChatMessage } from '../../types';
 
 // ─── TurnTimer ──────────────────────────────────────────────────────────────
 
@@ -40,6 +41,46 @@ export function TurnTimer() {
         transition={{ duration: 0.1, ease: 'linear' }}
       />
     </div>
+  );
+}
+
+// ─── ChatToast ───────────────────────────────────────────────────────────────
+
+export function ChatToast() {
+  const chatMessages = useGameStore((s) => s.chatMessages);
+  const [toast, setToast] = useState<ChatMessage | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const last = chatMessages[chatMessages.length - 1];
+    if (!last || last.id === lastIdRef.current) return;
+    lastIdRef.current = last.id;
+    setToast(last);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setToast(null), 4000);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [chatMessages]);
+
+  return (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          className="fixed bottom-36 left-4 z-50 max-w-xs bg-gray-900/95 border border-white/20 rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3 cursor-pointer"
+          initial={{ x: -80, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: -80, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+          onClick={() => setToast(null)}
+        >
+          <span className="text-2xl flex-shrink-0">{toast.avatar}</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-white/50 text-xs font-semibold mb-0.5">{toast.username}</span>
+            <span className="text-white text-sm">{toast.message}</span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

@@ -46,11 +46,11 @@ export function PlayerHand() {
     }
   }
 
-  const fanOffset = Math.min(48, Math.floor(600 / Math.max(hand.length, 1)));
+  const fanOffset = Math.min(60, Math.floor(700 / Math.max(hand.length, 1)));
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative flex items-end justify-center" style={{ height: 120 }}>
+      <div className="relative flex items-end justify-center" style={{ height: 175 }}>
         {hand.map((card, i) => {
           const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor);
           const offset = (i - (hand.length - 1) / 2) * fanOffset;
