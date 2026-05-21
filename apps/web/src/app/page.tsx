@@ -82,7 +82,7 @@ export default function HomePage() {
 
   // Navigate when room is ready
   useEffect(() => {
-    if (room?.roomCode) router.push(`/lobby/${room.roomCode}`);
+    if (room?.code) router.push(`/lobby/${room.code}`);
   }, [room, router]);
 
   // Create Room form

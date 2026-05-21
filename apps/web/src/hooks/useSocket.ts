@@ -19,17 +19,20 @@ export function useSocket() {
     if (!registered) {
       registered = true;
 
+      // Auth — server sends structured object now
       socket.on('auth:token', ({ token, username, avatar, jwtToken }: {
         token: string; username: string; avatar: string; jwtToken: string;
       }) => {
         setAuth(token, username, avatar, jwtToken);
       });
 
+      // Room events
       socket.on('room:created', (payload: RoomPayload) => setRoom(payload));
-      socket.on('room:joined', (payload: RoomPayload) => setRoom(payload));
       socket.on('room:updated', (payload: RoomPayload) => setRoom(payload));
       socket.on('room:left', () => setRoom(null));
 
+      // Game events — server emits 'game:started' for initial state, 'game:stateUpdate' for moves
+      socket.on('game:started', (state: PersonalizedGameState) => setGameState(state));
       socket.on('game:stateUpdate', (state: PersonalizedGameState) => setGameState(state));
 
       socket.on('game:unoCall', ({ playerToken }: { playerToken: string }) => {
@@ -37,17 +40,33 @@ export function useSocket() {
         setTimeout(() => setUnoAlert(null), 3000);
       });
 
-      socket.on('game:ended', (result: GameEndResult) => setGameEndResult(result));
+      // Transform server GameEndPayload → client GameEndResult
+      socket.on('game:ended', (result: {
+        roomCode: string;
+        winner: string;
+        players: Array<{ token: string; username: string; position: number; handCount: number }>;
+        duration: number;
+      }) => {
+        const winnerPlayer = result.players.find((p) => p.token === result.winner);
+        const transformed: GameEndResult = {
+          winnerToken: result.winner,
+          winnerUsername: winnerPlayer?.username ?? 'Unknown',
+          durationMs: result.duration * 1000,
+          players: result.players.map((p) => ({
+            token: p.token,
+            username: p.username,
+            cardCount: p.handCount,
+          })),
+        };
+        setGameEndResult(transformed);
+      });
 
-      socket.on('chat:message', (msg: Omit<ChatMessage, 'id'> & { id?: string }) => {
-        addChatMessage({ id: msg.id ?? crypto.randomUUID(), ...msg });
+      // Chat — server now sends playerToken; add client-side id
+      socket.on('chat:message', (msg: Omit<ChatMessage, 'id'>) => {
+        addChatMessage({ id: crypto.randomUUID(), ...msg });
       });
     }
 
     connectSocket();
-
-    return () => {
-      // Keep socket connected across page navigations; only clean up on full unmount
-    };
   }, [setAuth, setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult]);
 }

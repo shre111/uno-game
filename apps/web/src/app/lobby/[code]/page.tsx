@@ -124,8 +124,8 @@ export default function LobbyPage() {
     );
   }
 
-  const isHost = room.hostToken === myToken;
-  const hostPlayer = room.players.find((p) => p.token === room.hostToken);
+  const isHost = room.host === myToken;
+  const hostPlayer = room.players.find((p) => p.token === room.host);
   const maxSlots = room.maxPlayers ?? MAX_SLOTS;
   const filledSlots = room.players;
   const emptyCount = Math.max(0, maxSlots - filledSlots.length);
@@ -178,7 +178,7 @@ export default function LobbyPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {filledSlots.map((p) => (
-              <PlayerSlot key={p.token} player={p} isHost={p.token === room.hostToken} />
+              <PlayerSlot key={p.token} player={p} isHost={p.token === room.host} />
             ))}
             {Array.from({ length: emptyCount }).map((_, i) => (
               <PlayerSlot key={`empty-${i}`} isEmpty />

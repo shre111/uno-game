@@ -60,7 +60,13 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
 
     // Deliver new token if one was generated during auth
     if (socket.data.newToken) {
-      socket.emit('auth:token', socket.data.newToken);
+      const { token: playerToken, username, avatar } = socket.data.guest;
+      socket.emit('auth:token', {
+        token: playerToken,
+        username,
+        avatar,
+        jwtToken: socket.data.newToken,
+      });
       delete socket.data.newToken;
     }
 

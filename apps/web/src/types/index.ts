@@ -4,15 +4,16 @@ export interface RoomPlayer {
   token: string;
   username: string;
   avatar: string;
+  isHost: boolean;
 }
 
 export interface RoomPayload {
-  roomCode: string;
-  players: RoomPlayer[];
-  hostToken: string;
+  code: string;
+  host: string;
   status: string;
-  maxPlayers?: number;
-  variant?: string;
+  players: RoomPlayer[];
+  maxPlayers: number;
+  settings: { maxPlayers: number; private: boolean };
 }
 
 export interface ChatMessage {
@@ -21,7 +22,7 @@ export interface ChatMessage {
   username: string;
   avatar: string;
   message: string;
-  timestamp: number;
+  timestamp: string;
 }
 
 export interface GameEndResult {

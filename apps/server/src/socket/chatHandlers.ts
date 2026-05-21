@@ -24,9 +24,10 @@ export function registerChatHandlers(io: IoServer, socket: IoSocket): void {
       return;
     }
 
-    const { username, avatar } = socket.data.guest;
+    const { token: playerToken, username, avatar } = socket.data.guest;
 
     io.to(roomCode).emit('chat:message', {
+      playerToken,
       username,
       avatar,
       message: message.trim(),
