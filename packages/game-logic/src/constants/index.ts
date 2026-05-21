@@ -1,10 +1,22 @@
 export const HAND_SIZE = 7;
 export const DRAW_PENALTY = 2;
 export const DRAW_TWO_COUNT = 2;
-export const DARK_DRAW_COUNT = 5;
 export const WILD_FOUR_COUNT = 4;
 export const UNO_HAND_SIZE = 1;
 export const MAX_PLAYERS = 10;
 export const MIN_PLAYERS = 2;
-export const MERCY_MIN_CARDS = 10;
-export const MERCY_FRESH_HAND = 5;
+
+// Flip variant
+export const FLIP_DRAW_ONE_COUNT = 1;
+export const FLIP_DRAW_TWO_COUNT = 2;
+export const FLIP_DRAW_FIVE_COUNT = 5;
+
+// Mercy variant
+export const MERCY_ELIMINATION_THRESHOLD = 25;
+
+export const MERCY_DRAW_AMOUNTS: Record<string, number> = {
+  draw2: 2,
+  draw4: 4,
+  draw6: 6,
+  draw10: 10,
+};
