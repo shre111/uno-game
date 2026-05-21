@@ -57,25 +57,42 @@ export function GameBoard() {
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)' }} />
 
       {/* turn timer */}
-      <div className="absolute top-0 left-0 right-0 px-4 pt-2 z-10">
+      <div className="absolute top-0 left-0 right-0 z-10">
         <TurnTimer />
-        <div className="text-center text-white/60 text-xs mt-1">
-          {amEliminated
-            ? 'You have been eliminated'
+      </div>
+
+      {/* turn badge — centered below timer bar */}
+      <div className="absolute top-3 left-0 right-0 flex justify-center z-10 pointer-events-none">
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold shadow-lg border ${
+          amEliminated
+            ? 'bg-gray-900/80 border-gray-600 text-gray-400'
             : isMyTurn
-              ? 'Your turn'
-              : `${gameState.players[gameState.currentPlayerIndex]?.username ?? '...'}'s turn`}
+              ? 'bg-green-700/80 border-green-400/50 text-green-100'
+              : 'bg-black/60 border-white/10 text-white/70'
+        }`}>
+          {!amEliminated && (
+            <span className="text-sm leading-none">
+              {gameState.players[gameState.currentPlayerIndex]?.avatar ?? ''}
+            </span>
+          )}
+          <span>
+            {amEliminated
+              ? 'You are eliminated'
+              : isMyTurn
+                ? 'Your turn'
+                : `${gameState.players[gameState.currentPlayerIndex]?.username ?? '...'}'s turn`}
+          </span>
         </div>
       </div>
 
       {/* direction indicator */}
-      <div className="absolute top-8 right-4 text-2xl text-white/40 z-10">
+      <div className="absolute top-10 right-4 text-xl text-white/30 z-10">
         {gameState.direction === 1 ? '↻' : '↺'}
       </div>
 
       {/* Flip variant: dark/light side indicator */}
       {gameState.variant === 'Flip' && (
-        <div className={`absolute top-8 left-4 z-10 px-3 py-1 rounded-full text-xs font-black border ${
+        <div className={`absolute top-10 left-4 z-10 px-2 py-0.5 rounded-full text-[10px] font-black border ${
           isDarkSide
             ? 'bg-indigo-900/80 border-indigo-400 text-indigo-200'
             : 'bg-yellow-400/20 border-yellow-400 text-yellow-200'
@@ -86,13 +103,13 @@ export function GameBoard() {
 
       {/* Mercy variant: indicator + elimination status */}
       {gameState.variant === 'Mercy' && (
-        <div className="absolute top-8 left-4 z-10 flex flex-col gap-1">
-          <div className="px-3 py-1 rounded-full text-xs font-black border bg-purple-900/80 border-purple-400 text-purple-200">
-            SHOW 'EM NO MERCY
+        <div className="absolute top-10 left-4 z-10 flex flex-col gap-1">
+          <div className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-purple-900/80 border-purple-400 text-purple-200">
+            NO MERCY
           </div>
           {eliminated.length > 0 && (
-            <div className="px-3 py-1 rounded-full text-xs border bg-gray-900/80 border-gray-500 text-gray-300">
-              {eliminated.length} eliminated
+            <div className="px-2 py-0.5 rounded-full text-[10px] border bg-gray-900/80 border-gray-500 text-gray-300">
+              {eliminated.length} out
             </div>
           )}
         </div>
