@@ -56,6 +56,7 @@ export interface UnoCallPayload {
 }
 
 export interface ChatMessagePayload {
+  playerToken: string;
   username: string;
   avatar: string;
   message: string;
@@ -90,7 +91,7 @@ export interface ServerToClientEvents {
   'game:unoCall': (data: UnoCallPayload) => void;
   'chat:message': (data: ChatMessagePayload) => void;
   'error': (error: SocketError) => void;
-  'auth:token': (token: string) => void;
+  'auth:token': (data: { token: string; username: string; avatar: string; jwtToken: string }) => void;
 }
 
 export interface SocketData {

@@ -37,7 +37,7 @@ export const emit = {
     getSocket().emit('room:create', { username, avatar, variant, maxPlayers }),
 
   joinRoom: (roomCode: string, username: string, avatar: string) =>
-    getSocket().emit('room:join', { roomCode, username, avatar }),
+    getSocket().emit('room:join', { code: roomCode, username, avatar }),
 
   leaveRoom: () => getSocket().emit('room:leave'),
 
