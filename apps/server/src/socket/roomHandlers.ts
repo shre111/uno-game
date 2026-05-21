@@ -8,6 +8,7 @@ function toRoomPayload(room: InstanceType<typeof Room>): RoomPayload {
     code: room.code,
     host: room.host,
     status: room.status,
+    variant: room.variant ?? 'Classic',
     players: room.players.map((p) => ({
       token: p.token,
       username: p.username,
@@ -30,13 +31,14 @@ export function registerRoomHandlers(io: IoServer, socket: IoSocket): void {
         return emit('ALREADY_IN_ROOM', 'Leave your current room before creating one');
       }
 
-      const { username, avatar, maxPlayers = 4, private: isPrivate = false } = data;
+      const { username, avatar, variant = 'Classic', maxPlayers = 4, private: isPrivate = false } = data;
       const { token } = socket.data.guest;
       const code = generateRoomCode();
 
       const room = await new Room({
         code,
         host: token,
+        variant,
         players: [{ token, username, avatar, isHost: true }],
         maxPlayers,
         settings: { maxPlayers, private: isPrivate },

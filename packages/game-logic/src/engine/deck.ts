@@ -30,6 +30,17 @@ export function createDeck(): Card[] {
   return cards; // 108 cards
 }
 
+// Flip deck: standard 108 cards + 2 flip cards per color (8 total)
+export function createFlipDeck(): Card[] {
+  const base = createDeck();
+  const flips: Card[] = [];
+  for (const color of COLORS) {
+    flips.push({ id: `${color}_flip_0`, color, value: 'flip' });
+    flips.push({ id: `${color}_flip_1`, color, value: 'flip' });
+  }
+  return [...base, ...flips]; // 116 cards
+}
+
 export function shuffle<T>(array: readonly T[]): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {

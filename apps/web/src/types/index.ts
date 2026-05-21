@@ -11,6 +11,7 @@ export interface RoomPayload {
   code: string;
   host: string;
   status: string;
+  variant?: string;
   players: RoomPlayer[];
   maxPlayers: number;
   settings: { maxPlayers: number; private: boolean };

@@ -39,9 +39,11 @@ export function GameBoard() {
   const isMyTurn = currentTurnToken === myToken;
   const myHandCount = gameState.myHand.length;
   const showUnoButton = myHandCount === 1;
+  const showMercyButton = isMyTurn && (gameState.canCallMercy ?? false);
+  const isDarkSide = gameState.side === 'dark';
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-green-900" style={{ background: 'radial-gradient(ellipse at center, #1a5c2a 0%, #0d3018 100%)' }}>
+    <div className="relative w-full h-screen overflow-hidden bg-green-900" style={{ background: isDarkSide ? 'radial-gradient(ellipse at center, #1a1a3a 0%, #0a0a1a 100%)' : 'radial-gradient(ellipse at center, #1a5c2a 0%, #0d3018 100%)' }}>
       {/* felt texture overlay */}
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)' }} />
 
@@ -57,6 +59,24 @@ export function GameBoard() {
       <div className="absolute top-8 right-4 text-2xl text-white/40 z-10">
         {gameState.direction === 1 ? '↻' : '↺'}
       </div>
+
+      {/* Flip variant: dark/light side indicator */}
+      {gameState.variant === 'Flip' && (
+        <div className={`absolute top-8 left-4 z-10 px-3 py-1 rounded-full text-xs font-black border ${
+          isDarkSide
+            ? 'bg-indigo-900/80 border-indigo-400 text-indigo-200'
+            : 'bg-yellow-400/20 border-yellow-400 text-yellow-200'
+        }`}>
+          {isDarkSide ? 'DARK SIDE' : 'LIGHT SIDE'}
+        </div>
+      )}
+
+      {/* Mercy variant: indicator */}
+      {gameState.variant === 'Mercy' && (
+        <div className="absolute top-8 left-4 z-10 px-3 py-1 rounded-full text-xs font-black border bg-purple-900/80 border-purple-400 text-purple-200">
+          MERCY
+        </div>
+      )}
 
       {/* opponents */}
       {opponents.map((player, i) => {
@@ -93,6 +113,22 @@ export function GameBoard() {
             onClick={() => emit.callUNO()}
           >
             UNO!
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Mercy button */}
+      <AnimatePresence>
+        {showMercyButton && (
+          <motion.button
+            className="absolute bottom-56 right-4 z-30 bg-purple-600 hover:bg-purple-500 text-white font-black text-base px-5 py-3 rounded-full shadow-2xl border-2 border-white"
+            initial={{ scale: 0, rotate: 20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            exit={{ scale: 0 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => emit.callMercy()}
+          >
+            MERCY
           </motion.button>
         )}
       </AnimatePresence>

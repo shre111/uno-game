@@ -18,6 +18,7 @@ export interface IRoom {
   code: string;
   host: string;
   status: RoomStatus;
+  variant: string;
   players: IPlayer[];
   maxPlayers: number;
   direction: 1 | -1;
@@ -52,6 +53,7 @@ const roomSchema = new Schema<IRoom>(
       enum: ['waiting', 'playing', 'finished'] as RoomStatus[],
       default: 'waiting',
     },
+    variant: { type: String, enum: ['Classic', 'Flip', 'Mercy'], default: 'Classic' },
     players: { type: [playerSchema], default: [] },
     maxPlayers: { type: Number, default: 4, min: 2, max: 10 },
     direction: { type: Number, enum: [1, -1], default: 1 },

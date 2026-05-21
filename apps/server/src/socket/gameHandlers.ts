@@ -1,4 +1,4 @@
-import { ClassicUNO } from '@uno-game/game-logic';
+import { ClassicUNO, FlipUNO, MercyUNO } from '@uno-game/game-logic';
 import type { GameState } from '@uno-game/game-logic';
 import { Room } from '../models/room.model';
 import { GameHistory } from '../models/game.model';
@@ -8,12 +8,16 @@ import type { IoServer, IoSocket, GameEndPayload } from './types';
 const GAME_START_KEY = (code: string) => `gamestart:${code}`;
 const REDIS_GAME_TTL = 86_400;
 
+function getEngine(variant?: string) {
+  if (variant === 'Flip') return FlipUNO;
+  if (variant === 'Mercy') return MercyUNO;
+  return ClassicUNO;
+}
+
 function emitPersonalizedToAll(io: IoServer, state: GameState): void {
+  const engine = getEngine(state.variant);
   for (const player of state.players) {
-    io.to(player.token).emit(
-      'game:stateUpdate',
-      ClassicUNO.personalizeState(state, player.token),
-    );
+    io.to(player.token).emit('game:stateUpdate', engine.personalizeState(state, player.token));
   }
 }
 
@@ -23,27 +27,19 @@ async function saveAndBroadcast(
   event: 'game:started' | 'game:stateUpdate' = 'game:stateUpdate',
 ): Promise<void> {
   await setGameState(state.roomCode, state as unknown as Record<string, unknown>);
+  const engine = getEngine(state.variant);
   for (const player of state.players) {
-    io.to(player.token).emit(
-      event,
-      ClassicUNO.personalizeState(state, player.token),
-    );
+    io.to(player.token).emit(event, engine.personalizeState(state, player.token));
   }
 }
 
-async function finalizeGame(
-  io: IoServer,
-  state: GameState,
-  roomCode: string,
-): Promise<void> {
+async function finalizeGame(io: IoServer, state: GameState, roomCode: string): Promise<void> {
   const redis = (await import('../config/redis')).getRedisClient();
   const startRaw = await redis.get(GAME_START_KEY(roomCode));
   const startedAt = startRaw ? parseInt(startRaw, 10) : Date.now();
   const duration = Math.round((Date.now() - startedAt) / 1_000);
 
-  const sortedPlayers = [...state.players].sort(
-    (a, b) => a.hand.length - b.hand.length,
-  );
+  const sortedPlayers = [...state.players].sort((a, b) => a.hand.length - b.hand.length);
 
   const endPayload: GameEndPayload = {
     roomCode,
@@ -57,25 +53,19 @@ async function finalizeGame(
     duration,
   };
 
-  // Persist game history
   await GameHistory.create({
     roomCode,
-    players: endPayload.players.map(({ token, username, position }) => ({
-      token,
-      username,
-      position,
-    })),
+    players: endPayload.players.map(({ token, username, position }) => ({ token, username, position })),
     winner: state.winner!,
     duration,
     cardCount: state.discardPile.length,
   });
 
-  // Mark room as finished
   await Room.updateOne({ code: roomCode }, { status: 'finished' });
 
-  // Notify all players — personalised final state first, then game:ended
+  const engine = getEngine(state.variant);
   for (const player of state.players) {
-    io.to(player.token).emit('game:stateUpdate', ClassicUNO.personalizeState(state, player.token));
+    io.to(player.token).emit('game:stateUpdate', engine.personalizeState(state, player.token));
   }
   io.to(roomCode).emit('game:ended', endPayload);
 
@@ -84,8 +74,7 @@ async function finalizeGame(
 }
 
 export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
-  const emit = (code: string, message: string) =>
-    socket.emit('error', { code, message });
+  const emit = (code: string, message: string) => socket.emit('error', { code, message });
 
   // ── game:start ─────────────────────────────────────────────────────────────
   socket.on('game:start', async () => {
@@ -105,7 +94,8 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
         avatar: p.avatar,
       }));
 
-      const gameState = ClassicUNO.createInitialState(initPlayers, roomCode);
+      const engine = getEngine(room.variant);
+      const gameState = engine.createInitialState(initPlayers, roomCode);
 
       room.status = 'playing';
       await room.save();
@@ -129,12 +119,8 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       if (!raw) return emit('GAME_NOT_STARTED', 'No active game in this room');
 
       const state = raw as unknown as GameState;
-      const { state: newState, error } = ClassicUNO.playCard(
-        state,
-        socket.data.guest.token,
-        cardIndex,
-        chosenColor,
-      );
+      const engine = getEngine(state.variant);
+      const { state: newState, error } = engine.playCard(state, socket.data.guest.token, cardIndex, chosenColor);
 
       if (error) return emit(error, `Cannot play card: ${error}`);
 
@@ -159,10 +145,8 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       if (!raw) return emit('GAME_NOT_STARTED', 'No active game in this room');
 
       const state = raw as unknown as GameState;
-      const { state: newState, drawnCards } = ClassicUNO.drawCard(
-        state,
-        socket.data.guest.token,
-      );
+      const engine = getEngine(state.variant);
+      const { state: newState, drawnCards } = engine.drawCard(state, socket.data.guest.token);
 
       if (drawnCards.length === 0) return emit('NOT_YOUR_TURN', 'It is not your turn');
 
@@ -185,15 +169,11 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       const player = state.players.find((p) => p.token === socket.data.guest.token);
       if (!player) return emit('PLAYER_NOT_FOUND', 'Player not found in game');
 
-      const newState = ClassicUNO.callUNO(state, socket.data.guest.token);
+      const engine = getEngine(state.variant);
+      const newState = engine.callUNO(state, socket.data.guest.token);
       await setGameState(roomCode, newState as unknown as Record<string, unknown>);
 
-      io.to(roomCode).emit('game:unoCall', {
-        playerToken: socket.data.guest.token,
-        username: player.username,
-      });
-
-      // Also send updated state so hand counts refresh for all players
+      io.to(roomCode).emit('game:unoCall', { playerToken: socket.data.guest.token, username: player.username });
       emitPersonalizedToAll(io, newState);
     } catch (err) {
       emit('INTERNAL_ERROR', err instanceof Error ? err.message : 'Failed to call UNO');
@@ -210,14 +190,33 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       if (!raw) return emit('GAME_NOT_STARTED', 'No active game in this room');
 
       const state = raw as unknown as GameState;
-      const { state: newState } = ClassicUNO.challengeUNO(
-        state,
-        socket.data.guest.token,
-      );
+      const engine = getEngine(state.variant);
+      const { state: newState } = engine.challengeUNO(state, socket.data.guest.token);
 
       await saveAndBroadcast(io, newState);
     } catch (err) {
       emit('INTERNAL_ERROR', err instanceof Error ? err.message : 'Failed to challenge UNO');
+    }
+  });
+
+  // ── game:callMercy ─────────────────────────────────────────────────────────
+  socket.on('game:callMercy', async () => {
+    try {
+      const roomCode = socket.data.currentRoom;
+      if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
+
+      const raw = await getGameState(roomCode);
+      if (!raw) return emit('GAME_NOT_STARTED', 'No active game in this room');
+
+      const state = raw as unknown as GameState;
+      if (state.variant !== 'Mercy') return emit('INVALID_VARIANT', 'Mercy is only available in Mercy variant');
+
+      const { state: newState, error } = MercyUNO.callMercy(state, socket.data.guest.token);
+      if (error) return emit(error, `Cannot call Mercy: ${error}`);
+
+      await saveAndBroadcast(io, newState);
+    } catch (err) {
+      emit('INTERNAL_ERROR', err instanceof Error ? err.message : 'Failed to call Mercy');
     }
   });
 }
