@@ -169,6 +169,7 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
             code: room.code,
             host: room.host,
             status: room.status,
+            variant: room.variant ?? 'Classic',
             players: room.players.map((p) => ({
               token: p.token,
               username: p.username,

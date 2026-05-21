@@ -23,12 +23,13 @@ function getLabel(value: string): string {
   if (value === 'draw2') return '+2';
   if (value === 'wild') return 'W';
   if (value === 'wild4') return '+4';
+  if (value === 'flip') return '↕';
   return value;
 }
 
 function getLabelFontSize(value: string, large: boolean): number {
   const base = large ? 28 : 13;
-  if (value === 'reverse' || value === 'skip') return large ? 24 : 12;
+  if (value === 'reverse' || value === 'skip' || value === 'flip') return large ? 24 : 12;
   if (value === 'draw2') return large ? 22 : 11;
   if (value === 'wild4') return large ? 18 : 10;
   return base;

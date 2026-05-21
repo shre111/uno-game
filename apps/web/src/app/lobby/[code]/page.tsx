@@ -129,7 +129,7 @@ export default function LobbyPage() {
   const maxSlots = room.maxPlayers ?? MAX_SLOTS;
   const filledSlots = room.players;
   const emptyCount = Math.max(0, maxSlots - filledSlots.length);
-  const canStart = isHost && filledSlots.length >= 2 && variant === 'Classic';
+  const canStart = isHost && filledSlots.length >= 2;
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
@@ -196,20 +196,14 @@ export default function LobbyPage() {
                 {VARIANTS.map((v) => (
                   <button
                     key={v}
-                    onClick={() => v === 'Classic' && setVariant(v)}
-                    disabled={v !== 'Classic'}
+                    onClick={() => setVariant(v)}
                     className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all border-2 ${
                       variant === v
                         ? 'border-red-500 bg-red-500/20 text-white'
-                        : v !== 'Classic'
-                          ? 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
-                          : 'border-white/10 bg-white/5 text-white/50 hover:text-white'
+                        : 'border-white/10 bg-white/5 text-white/50 hover:text-white'
                     }`}
                   >
                     {v}
-                    {v !== 'Classic' && (
-                      <span className="block text-[9px] text-white/30 font-normal leading-tight">Coming Soon</span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -241,7 +235,7 @@ export default function LobbyPage() {
               className="w-full py-4 rounded-2xl font-black text-xl text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-xl shadow-red-900/40 transition-colors"
               whileTap={canStart ? { scale: 0.97 } : {}}
             >
-              {starting ? 'Starting…' : filledSlots.length < 2 ? 'Need at least 2 players' : variant !== 'Classic' ? `${variant} coming soon — pick Classic` : 'Start Game'}
+              {starting ? 'Starting…' : filledSlots.length < 2 ? 'Need at least 2 players' : 'Start Game'}
             </motion.button>
           </div>
         ) : (

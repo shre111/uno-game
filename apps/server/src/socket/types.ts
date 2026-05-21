@@ -6,6 +6,7 @@ import type { CardColor, PersonalizedGameState } from '@uno-game/game-logic';
 export interface CreateRoomData {
   username: string;
   avatar: string;
+  variant?: string;
   maxPlayers?: number;
   private?: boolean;
 }
@@ -38,6 +39,7 @@ export interface RoomPayload {
   code: string;
   host: string;
   status: string;
+  variant: string;
   players: RoomPlayerPayload[];
   maxPlayers: number;
   settings: { maxPlayers: number; private: boolean };
@@ -79,6 +81,7 @@ export interface ClientToServerEvents {
   'game:drawCard': () => void;
   'game:callUNO': () => void;
   'game:challengeUNO': () => void;
+  'game:callMercy': () => void;
   'chat:send': (data: ChatData) => void;
 }
 
