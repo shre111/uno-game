@@ -28,17 +28,21 @@ export function ColorPicker({ onColorChosen, isDarkSide = false }: ColorPickerPr
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
+      {/* Mobile: slides up from bottom; Desktop: centered card */}
       <motion.div
-        className="bg-gray-900 rounded-2xl p-8 flex flex-col items-center gap-6 shadow-2xl"
-        initial={{ scale: 0.8 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.8 }}
+        className="w-full sm:w-auto bg-gray-900 sm:rounded-2xl rounded-t-3xl p-8 flex flex-col items-center gap-6 shadow-2xl"
+        initial={{ y: 80, opacity: 0, scale: 0.95 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 80, opacity: 0, scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
       >
+        {/* drag handle on mobile */}
+        <div className="sm:hidden w-10 h-1 rounded-full bg-white/20 -mt-3 mb-2" />
         <h2 className="text-white text-xl font-bold">Choose a color</h2>
         <div className="flex gap-4">
           {colors.map(({ color, bg, label }) => (
