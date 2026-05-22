@@ -60,7 +60,7 @@ export function DiscardPile() {
           exit={{ rotateY: -90, opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Card card={displayCard} />
+          <Card card={displayCard} layoutId={`card-${topCard.id}`} />
         </motion.div>
       </AnimatePresence>
       <span className="text-white/60 text-xs">Discard</span>

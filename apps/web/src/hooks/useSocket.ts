@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { getSocket, connectSocket, updateSocketAuth } from '../lib/socket';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
@@ -11,7 +12,12 @@ let registered = false;
 
 export function useSocket() {
   const { setAuth } = useAuthStore();
-  const { setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult, setSocketError } = useGameStore();
+  const {
+    setRoom, setGameState, addChatMessage, setUnoAlert,
+    setGameEndResult, setSocketError,
+  } = useGameStore();
+
+  const prevPlayerCountRef = useRef<number>(0);
 
   useEffect(() => {
     const socket = getSocket();
@@ -19,7 +25,6 @@ export function useSocket() {
     if (!registered) {
       registered = true;
 
-      // Auth — update socket auth so reconnects use the correct JWT
       socket.on('auth:token', ({ token, username, avatar, jwtToken }: {
         token: string; username: string; avatar: string; jwtToken: string;
       }) => {
@@ -27,21 +32,42 @@ export function useSocket() {
         updateSocketAuth(jwtToken);
       });
 
-      // Room events
-      socket.on('room:created', (payload: RoomPayload) => setRoom(payload));
-      socket.on('room:updated', (payload: RoomPayload) => setRoom(payload));
-      socket.on('room:left', () => setRoom(null));
-
-      // Game events
-      socket.on('game:started', (state: PersonalizedGameState) => setGameState(state));
-      socket.on('game:stateUpdate', (state: PersonalizedGameState) => setGameState(state));
-
-      socket.on('game:unoCall', ({ playerToken }: { playerToken: string }) => {
-        setUnoAlert(playerToken);
-        setTimeout(() => setUnoAlert(null), 3000);
+      socket.on('room:created', (payload: RoomPayload) => {
+        setRoom(payload);
+        prevPlayerCountRef.current = payload.players.length;
       });
 
-      // Transform server GameEndPayload → client GameEndResult
+      socket.on('room:updated', (payload: RoomPayload) => {
+        const prev = prevPlayerCountRef.current;
+        const next = payload.players.length;
+        if (next > prev) {
+          const newPlayer = payload.players[next - 1];
+          toast(`${newPlayer?.avatar ?? ''} ${newPlayer?.username ?? 'Someone'} joined`);
+        } else if (next < prev) {
+          toast('A player left the room', { icon: '👋' });
+        }
+        prevPlayerCountRef.current = next;
+        setRoom(payload);
+      });
+
+      socket.on('room:left', () => setRoom(null));
+
+      socket.on('game:started', (state: PersonalizedGameState) => setGameState(state));
+
+      socket.on('game:stateUpdate', (state: PersonalizedGameState) => setGameState(state));
+
+      socket.on('game:unoCall', ({ playerToken, username }: { playerToken: string; username: string }) => {
+        // Grab token at call-time from store
+        const myToken = useAuthStore.getState().token;
+        setUnoAlert(playerToken);
+        setTimeout(() => setUnoAlert(null), 3000);
+        if (playerToken === myToken) {
+          toast('🃏 You called UNO!', { duration: 2500 });
+        } else {
+          toast(`🃏 ${username} called UNO!`, { duration: 2500 });
+        }
+      });
+
       socket.on('game:ended', (result: {
         roomCode: string;
         winner: string;
@@ -62,17 +88,27 @@ export function useSocket() {
         setGameEndResult(transformed);
       });
 
-      // Chat
       socket.on('chat:message', (msg: Omit<ChatMessage, 'id'>) => {
         addChatMessage({ id: crypto.randomUUID(), ...msg });
       });
 
-      // Server error events — surface to UI so loading states can reset
       socket.on('error', (err: { code: string; message: string }) => {
         const msg = err?.message ?? 'Something went wrong';
         setSocketError(msg);
-        // Auto-clear after 4 seconds
         setTimeout(() => setSocketError(null), 4000);
+
+        // Map specific error codes to user-friendly toasts
+        if (err.code === 'HAS_PLAYABLE_CARD') {
+          toast.warning('You have a playable card — play it!');
+        } else if (err.code === 'CARD_NOT_PLAYABLE') {
+          toast.error('That card cannot be played right now');
+        } else if (err.code === 'NOT_YOUR_TURN') {
+          toast.error('It\'s not your turn');
+        } else if (err.code === 'FORGOT_UNO' || msg.toLowerCase().includes('uno')) {
+          toast.error(`Penalty! ${msg}`);
+        } else {
+          toast.error(msg, { duration: 3500 });
+        }
       });
     }
 

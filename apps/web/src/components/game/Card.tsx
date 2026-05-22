@@ -92,6 +92,7 @@ function WildCenter({ value, w, h, darkSide }: { value: string; w: number; h: nu
 
 interface CardProps {
   card: CardType;
+  layoutId?: string;
   isPlayable?: boolean;
   isSelected?: boolean;
   isBack?: boolean;
@@ -100,7 +101,7 @@ interface CardProps {
   small?: boolean;
 }
 
-export function Card({ card, isPlayable = false, isSelected = false, isBack = false, isDarkSide = false, onClick, small = false }: CardProps) {
+export function Card({ card, layoutId, isPlayable = false, isSelected = false, isBack = false, isDarkSide = false, onClick, small = false }: CardProps) {
   const isWild = card.color === 'wild';
   const bg = isWild ? '#1C1C1C' : (COLOR_BG[card.color] ?? '#555');
   const darkBg = isWild ? '#000' : (COLOR_DARK[card.color] ?? '#333');
@@ -117,6 +118,7 @@ export function Card({ card, isPlayable = false, isSelected = false, isBack = fa
 
   return (
     <motion.div
+      layoutId={layoutId}
       onTap={onClick}
       style={{
         width: W, height: H,

@@ -105,75 +105,126 @@ export function GameChat() {
     setInput('');
   }
 
-  return (
-    <div className="fixed bottom-4 right-4 z-40">
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="mb-2 w-72 bg-gray-900/95 rounded-xl shadow-2xl flex flex-col overflow-hidden border border-white/10"
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            style={{ height: 360 }}
+  const chatPanel = (
+    <div className="flex flex-col overflow-hidden h-full">
+      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+        {chatMessages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-2 ${msg.playerToken === myToken ? 'flex-row-reverse' : ''}`}
           >
-            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-              {chatMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-2 ${msg.playerToken === myToken ? 'flex-row-reverse' : ''}`}
-                >
-                  <span className="text-lg leading-none">{msg.avatar}</span>
-                  <div className={`max-w-[75%] ${msg.playerToken === myToken ? 'items-end' : 'items-start'} flex flex-col`}>
-                    <span className="text-white/40 text-[10px] mb-0.5">{msg.username}</span>
-                    <span className={`text-sm text-white rounded-xl px-3 py-1.5 ${msg.playerToken === myToken ? 'bg-blue-600' : 'bg-white/10'}`}>
-                      {msg.message}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              <div ref={bottomRef} />
+            <span className="text-lg leading-none">{msg.avatar}</span>
+            <div className={`max-w-[75%] ${msg.playerToken === myToken ? 'items-end' : 'items-start'} flex flex-col`}>
+              <span className="text-white/40 text-[10px] mb-0.5">{msg.username}</span>
+              <span className={`text-sm text-white rounded-xl px-3 py-1.5 ${msg.playerToken === myToken ? 'bg-blue-600' : 'bg-white/10'}`}>
+                {msg.message}
+              </span>
             </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
 
-            {/* reactions */}
-            <div className="flex gap-1 px-3 py-1 border-t border-white/10">
-              {REACTIONS.map((r) => (
-                <button
-                  key={r}
-                  className="text-xl hover:scale-125 transition-transform"
-                  onClick={() => sendMessage(r)}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
+      {/* reactions */}
+      <div className="flex gap-1 px-3 py-1 border-t border-white/10">
+        {REACTIONS.map((r) => (
+          <button
+            key={r}
+            className="text-xl hover:scale-125 transition-transform"
+            onClick={() => sendMessage(r)}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
 
-            {/* input */}
-            <div className="flex gap-2 p-2 border-t border-white/10">
-              <input
-                className="flex-1 bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 outline-none placeholder:text-white/30"
-                placeholder="Say something..."
-                value={input}
-                maxLength={200}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)}
-              />
-              <button
-                className="bg-blue-600 hover:bg-blue-500 text-white text-sm px-3 rounded-lg"
-                onClick={() => sendMessage(input)}
-              >
-                Send
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <button
-        className="bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
-        onClick={() => setOpen((v) => !v)}
-      >
-        💬
-      </button>
+      {/* input */}
+      <div className="flex gap-2 p-2 border-t border-white/10">
+        <input
+          className="flex-1 bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 outline-none placeholder:text-white/30"
+          placeholder="Say something..."
+          value={input}
+          maxLength={200}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && sendMessage(input)}
+        />
+        <button
+          className="bg-blue-600 hover:bg-blue-500 text-white text-sm px-3 rounded-lg"
+          onClick={() => sendMessage(input)}
+        >
+          Send
+        </button>
+      </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop: fixed bottom-right floating panel */}
+      <div className="hidden sm:block fixed bottom-4 right-4 z-40">
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              className="mb-2 w-72 bg-gray-900/95 rounded-xl shadow-2xl border border-white/10"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              style={{ height: 360 }}
+            >
+              {chatPanel}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <button
+          className="bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
+          onClick={() => setOpen((v) => !v)}
+        >
+          💬
+        </button>
+      </div>
+
+      {/* Mobile: full-width bottom sheet */}
+      <div className="sm:hidden">
+        {/* toggle button */}
+        <button
+          className="fixed bottom-4 right-4 z-40 bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
+          onClick={() => setOpen((v) => !v)}
+        >
+          💬
+        </button>
+
+        <AnimatePresence>
+          {open && (
+            <>
+              {/* backdrop */}
+              <motion.div
+                className="fixed inset-0 z-40 bg-black/50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setOpen(false)}
+              />
+              {/* sheet */}
+              <motion.div
+                className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl border-t border-white/10 shadow-2xl"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                style={{ height: '65vh' }}
+              >
+                {/* drag handle */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-white/20" />
+                </div>
+                <div style={{ height: 'calc(100% - 20px)' }}>
+                  {chatPanel}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   );
 }

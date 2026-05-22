@@ -1,12 +1,14 @@
 'use client';
 
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
 // Game-end overlay is handled by the parent room page (with confetti)
 import { DrawPile, DiscardPile } from './Deck';
-import { PlayerHand, OpponentHand } from './Hand';
+import { PlayerHand, OpponentHand, CompactOpponentBadge } from './Hand';
 import { TurnTimer, GameChat, ChatToast } from './PlayerList';
 
 const OPPONENT_POSITIONS: Record<number, string[]> = {
@@ -40,6 +42,14 @@ export function GameBoard() {
   const myHandCount = gameState.myHand.length;
   const showUnoButton = myHandCount === 1;
   const isDarkSide = gameState.side === 'dark';
+
+  // Turn reminder toast
+  useEffect(() => {
+    if (isMyTurn) {
+      toast('Your turn!', { duration: 2000, icon: '🃏' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTurnToken]);
   const eliminated = gameState.eliminated ?? [];
   const amEliminated = eliminated.includes(myToken ?? '');
 
@@ -136,14 +146,27 @@ export function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* opponents */}
+      {/* Mobile: compact opponent badge strip */}
+      <div className="sm:hidden absolute top-8 left-0 right-0 z-10 flex justify-center gap-3 px-2">
+        {opponents.map((player) => {
+          const isCurrentPlayer = player.token === currentTurnToken;
+          const isEliminated = eliminated.includes(player.token);
+          return (
+            <div key={player.token} className={isEliminated ? 'opacity-30' : ''}>
+              <CompactOpponentBadge player={player} isCurrentPlayer={isCurrentPlayer} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop: opponents at absolute positions */}
       {opponents.map((player, i) => {
         const pos = positions[i];
         if (!pos) return null;
         const isCurrentPlayer = player.token === currentTurnToken;
         const isEliminated = eliminated.includes(player.token);
         return (
-          <div key={player.token} className={`absolute ${POSITION_CLASSES[pos] ?? ''} z-10 ${isEliminated ? 'opacity-40' : ''}`}>
+          <div key={player.token} className={`hidden sm:block absolute ${POSITION_CLASSES[pos] ?? ''} z-10 ${isEliminated ? 'opacity-40' : ''}`}>
             <OpponentHand player={player} isCurrentPlayer={isCurrentPlayer} />
             {isEliminated && (
               <div className="text-center text-xs text-red-400 font-bold mt-1">ELIMINATED</div>
