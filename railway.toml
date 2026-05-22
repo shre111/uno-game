@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter server... run build"
+buildCommand = "NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter server... run build"
 
 [deploy]
 startCommand = "node apps/server/dist/index.js"
