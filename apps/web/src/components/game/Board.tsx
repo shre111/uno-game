@@ -186,33 +186,43 @@ export function GameBoard() {
         <PlayerHand />
       </div>
 
-      {/* UNO button */}
-      <AnimatePresence>
-        {showUnoButton && (
-          <motion.button
-            className="absolute bottom-40 right-4 z-30 bg-red-600 hover:bg-red-500 text-white font-black text-xl px-5 py-3 rounded-full shadow-2xl border-2 border-white"
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => emit.callUNO()}
-          >
-            UNO!
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Caught! button — shown when any opponent has 1 card and hasn't called UNO */}
-      {gameState.players.some((p) => p.token !== myToken && p.handCount === 1 && !p.hasCalledUno) && (
-        <motion.button
-          className="absolute bottom-40 left-4 z-30 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2 rounded-full shadow-lg"
-          initial={{ x: -50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          onClick={() => emit.challengeUNO()}
-        >
-          Caught! 🚨
-        </motion.button>
-      )}
+      {/* UNO action bar — Call UNO + Catch opponent */}
+      {(() => {
+        const catchTarget = gameState.players.find((p) => p.token !== myToken && p.handCount === 1 && !p.hasCalledUno);
+        if (!showUnoButton && !catchTarget) return null;
+        return (
+          <AnimatePresence>
+            <motion.div
+              className="absolute bottom-36 left-1/2 z-30 flex overflow-hidden rounded-xl border border-white/20 shadow-2xl"
+              style={{ x: '-50%' }}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+            >
+              {showUnoButton && (
+                <button
+                  className="bg-[#1e3a5f] hover:bg-[#254d7a] text-white font-bold text-sm px-5 py-3 transition-colors"
+                  onClick={() => emit.callUNO()}
+                >
+                  Call Uno
+                </button>
+              )}
+              {showUnoButton && catchTarget && (
+                <div className="w-px bg-white/20" />
+              )}
+              {catchTarget && (
+                <button
+                  className="bg-[#1e3a5f] hover:bg-[#254d7a] text-white font-bold text-sm px-5 py-3 transition-colors"
+                  onClick={() => emit.challengeUNO()}
+                >
+                  {catchTarget.username} didn&apos;t call Uno
+                </button>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        );
+      })()}
 
       {/* UNO alert toast */}
       <AnimatePresence>
