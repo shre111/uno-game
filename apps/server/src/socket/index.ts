@@ -9,6 +9,7 @@ import { registerGameHandlers } from './gameHandlers';
 import { registerChatHandlers } from './chatHandlers';
 import { Room } from '../models/room.model';
 import { deleteGameState } from '../services/redisService';
+import { config } from '../config';
 import type { IoServer, ClientToServerEvents, ServerToClientEvents, SocketData } from './types';
 
 const RECONNECT_WINDOW_MS = 30_000;
@@ -23,7 +24,7 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
     httpServer,
     {
       cors: {
-        origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000',
+        origin: config.corsOrigin,
         methods: ['GET', 'POST'],
         credentials: true,
       },
