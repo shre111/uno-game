@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useSocket } from '../hooks/useSocket';
 import { useGameStore } from '../store/gameStore';
 import { emit } from '../lib/socket';
@@ -99,6 +99,7 @@ export default function HomePage() {
   const [createAvatar, setCreateAvatar] = useState(AVATARS[0]!);
   const [variant, setVariant] = useState<string>('Classic');
   const [maxPlayers, setMaxPlayers] = useState(6);
+  const [turnDuration, setTurnDuration] = useState(30);
   const [creating, setCreating] = useState(false);
 
   // Join Room form
@@ -111,7 +112,7 @@ export default function HomePage() {
     e.preventDefault();
     if (!createUsername.trim()) return;
     setCreating(true);
-    emit.createRoom(createUsername.trim(), createAvatar, variant, maxPlayers);
+    emit.createRoom(createUsername.trim(), createAvatar, variant, maxPlayers, turnDuration);
   }
 
   function handleJoin(e: React.FormEvent) {
@@ -139,20 +140,6 @@ export default function HomePage() {
           <p className="text-white/40 mt-1 text-sm">No account needed — just jump in</p>
         </motion.div>
       </header>
-
-      {/* Error toast */}
-      <AnimatePresence>
-        {socketError && (
-          <motion.div
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white font-semibold text-sm px-5 py-3 rounded-xl shadow-2xl border border-red-400"
-            initial={{ y: -30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -30, opacity: 0 }}
-          >
-            {socketError}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* cards */}
       <main className="flex-1 flex items-start justify-center px-4 pb-12">
@@ -195,13 +182,24 @@ export default function HomePage() {
                 </Select>
               </div>
 
-              <div>
-                <Label>Max Players</Label>
-                <Select value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))}>
-                  {[2, 3, 4, 5, 6].map((n) => (
-                    <option key={n} value={n} className="bg-gray-900">{n} players</option>
-                  ))}
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Max Players</Label>
+                  <Select value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))}>
+                    {[2, 3, 4, 5, 6].map((n) => (
+                      <option key={n} value={n} className="bg-gray-900">{n} players</option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Turn Time</Label>
+                  <Select value={turnDuration} onChange={(e) => setTurnDuration(Number(e.target.value))}>
+                    {[15, 30, 45, 60].map((n) => (
+                      <option key={n} value={n} className="bg-gray-900">{n}s / turn</option>
+                    ))}
+                  </Select>
+                </div>
               </div>
 
               <SubmitButton loading={creating}>Create Room</SubmitButton>

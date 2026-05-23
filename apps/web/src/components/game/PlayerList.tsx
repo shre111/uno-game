@@ -11,10 +11,12 @@ import type { ChatMessage } from '../../types';
 
 export function TurnTimer() {
   const currentPlayerIndex = useGameStore((s) => s.gameState?.currentPlayerIndex);
+  const turnStartedAt = useGameStore((s) => s.gameState?.turnStartedAt);
+  const duration = useGameStore((s) => s.gameState?.turnDuration ?? 30);
   const [progress, setProgress] = useState(100);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const DURATION = 30;
 
+  // Reset and count down whenever a new turn begins (server stamps turnStartedAt)
   useEffect(() => {
     setProgress(100);
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -22,13 +24,13 @@ export function TurnTimer() {
     const start = Date.now();
     intervalRef.current = setInterval(() => {
       const elapsed = (Date.now() - start) / 1000;
-      const pct = Math.max(0, 100 - (elapsed / DURATION) * 100);
+      const pct = Math.max(0, 100 - (elapsed / duration) * 100);
       setProgress(pct);
       if (pct === 0 && intervalRef.current) clearInterval(intervalRef.current);
     }, 100);
 
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [currentPlayerIndex]);
+  }, [currentPlayerIndex, turnStartedAt, duration]);
 
   const color = progress > 60 ? '#27AE60' : progress > 30 ? '#F39C12' : '#E74C3C';
 

@@ -12,6 +12,7 @@ export type RoomStatus = 'waiting' | 'playing' | 'finished';
 export interface IRoomSettings {
   maxPlayers: number;
   private: boolean;
+  turnDuration: number;
 }
 
 export interface IRoom {
@@ -61,6 +62,7 @@ const roomSchema = new Schema<IRoom>(
     settings: {
       maxPlayers: { type: Number, default: 4, min: 2, max: 10 },
       private: { type: Boolean, default: false },
+      turnDuration: { type: Number, default: 30, min: 10, max: 120 },
     },
   },
   { timestamps: true }

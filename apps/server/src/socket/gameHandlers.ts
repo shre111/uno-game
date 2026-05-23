@@ -14,6 +14,59 @@ function getEngine(variant?: string) {
   return ClassicUNO;
 }
 
+// ── Turn timeout enforcement ──────────────────────────────────────────────────
+// Per-room timers that auto-advance the turn if the active player doesn't act in
+// time. Single-process in-memory map (matches the disconnect-timer approach).
+const turnTimers = new Map<string, NodeJS.Timeout>();
+
+export function clearTurnTimer(roomCode: string): void {
+  const t = turnTimers.get(roomCode);
+  if (t) {
+    clearTimeout(t);
+    turnTimers.delete(roomCode);
+  }
+}
+
+function scheduleTurnTimer(io: IoServer, state: GameState): void {
+  clearTurnTimer(state.roomCode);
+  const duration = state.turnDuration ?? 0;
+  if (state.status !== 'playing' || duration <= 0) return;
+
+  const roomCode = state.roomCode;
+  const timer = setTimeout(() => {
+    void handleTurnTimeout(io, roomCode);
+  }, duration * 1000);
+  turnTimers.set(roomCode, timer);
+}
+
+async function handleTurnTimeout(io: IoServer, roomCode: string): Promise<void> {
+  turnTimers.delete(roomCode);
+  try {
+    const raw = await getGameState(roomCode);
+    if (!raw) return;
+    const state = raw as unknown as GameState;
+    if (state.status !== 'playing') return;
+
+    const current = state.players[state.currentPlayerIndex];
+    if (!current) return;
+
+    const engine = getEngine(state.variant);
+    // Penalize inaction with a draw, then guarantee the turn moves on.
+    let next = engine.drawCard(state, current.token).state;
+    if (next.status === 'playing' && next.currentPlayerIndex === state.currentPlayerIndex) {
+      next = engine.forceSkipTurn(next);
+    }
+
+    if (next.status === 'finished') {
+      await finalizeGame(io, next, roomCode);
+      return;
+    }
+    await saveAndBroadcast(io, next);
+  } catch {
+    // Non-fatal — a later action will reschedule the timer
+  }
+}
+
 function emitPersonalizedToAll(io: IoServer, state: GameState): void {
   const engine = getEngine(state.variant);
   for (const player of state.players) {
@@ -26,14 +79,18 @@ async function saveAndBroadcast(
   state: GameState,
   event: 'game:started' | 'game:stateUpdate' = 'game:stateUpdate',
 ): Promise<void> {
-  await setGameState(state.roomCode, state as unknown as Record<string, unknown>);
-  const engine = getEngine(state.variant);
-  for (const player of state.players) {
-    io.to(player.token).emit(event, engine.personalizeState(state, player.token));
+  // Stamp the start of this turn so clients can render an accurate countdown
+  const stamped: GameState = { ...state, turnStartedAt: Date.now() };
+  await setGameState(stamped.roomCode, stamped as unknown as Record<string, unknown>);
+  const engine = getEngine(stamped.variant);
+  for (const player of stamped.players) {
+    io.to(player.token).emit(event, engine.personalizeState(stamped, player.token));
   }
+  scheduleTurnTimer(io, stamped);
 }
 
 async function finalizeGame(io: IoServer, state: GameState, roomCode: string): Promise<void> {
+  clearTurnTimer(roomCode);
   const redis = (await import('../config/redis')).getRedisClient();
   const startRaw = await redis.get(GAME_START_KEY(roomCode));
   const startedAt = startRaw ? parseInt(startRaw, 10) : Date.now();
@@ -100,6 +157,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
 
       const engine = getEngine(room.variant);
       const gameState = engine.createInitialState(initPlayers, roomCode);
+      gameState.turnDuration = room.settings?.turnDuration ?? 30;
 
       room.status = 'playing';
       await room.save();

@@ -64,6 +64,9 @@ export interface GameState {
   pendingDrawCount: number;
   unoCallPending?: string;
   lastAction?: LastAction;
+  // Per-turn time limit (seconds) and the epoch-ms timestamp the current turn began
+  turnDuration?: number;
+  turnStartedAt?: number;
 }
 
 export interface PersonalizedPlayerState {
@@ -94,4 +97,6 @@ export interface PersonalizedGameState {
   pendingDrawCount: number;
   unoCallPending?: string;
   lastAction?: LastAction;
+  turnDuration?: number;
+  turnStartedAt?: number;
 }

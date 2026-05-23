@@ -37,6 +37,9 @@ export function GameBoard() {
   const myIndex = gameState.players.findIndex((p) => p.token === myToken);
   const opponents = gameState.players.filter((p) => p.token !== myToken);
   const positions = OPPONENT_POSITIONS[gameState.players.length] ?? [];
+  // Side instruction panels fill the left/right-center space only when no opponent occupies it
+  const leftSlotFree = !positions.includes('left-center');
+  const rightSlotFree = !positions.includes('right-center');
   const currentTurnToken = gameState.players[gameState.currentPlayerIndex]?.token;
   const isMyTurn = currentTurnToken === myToken;
   const myHandCount = gameState.myHand.length;
@@ -174,6 +177,38 @@ export function GameBoard() {
           </div>
         );
       })}
+
+      {/* Left side panel: how UNO works (only when slot is free) */}
+      {leftSlotFree && (
+        <div className="hidden lg:block absolute left-3 top-1/2 -translate-y-1/2 z-10 w-48 pointer-events-none">
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-3 backdrop-blur-sm">
+            <div className="text-white/80 text-xs font-black mb-2 flex items-center gap-1">📖 How UNO Works</div>
+            <ul className="text-white/55 text-[11px] leading-relaxed space-y-1.5">
+              <li>• Match the top card by <span className="text-white/80">color</span> or <span className="text-white/80">number</span>.</li>
+              <li>• <span className="text-white/80">Skip / Reverse / +2</span> change the flow of play.</li>
+              <li>• <span className="text-white/80">Wild</span> sets any color; <span className="text-white/80">Wild +4</span> also stacks cards.</li>
+              <li>• No playable card? Draw one from the pile.</li>
+              <li>• First player to empty their hand wins.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Right side panel: how to play on this site (only when slot is free) */}
+      {rightSlotFree && (
+        <div className="hidden lg:block absolute right-3 top-1/2 -translate-y-1/2 z-10 w-48 pointer-events-none">
+          <div className="bg-black/30 border border-white/10 rounded-2xl p-3 backdrop-blur-sm">
+            <div className="text-white/80 text-xs font-black mb-2 flex items-center gap-1">🎮 How To Play Here</div>
+            <ul className="text-white/55 text-[11px] leading-relaxed space-y-1.5">
+              <li>• <span className="text-white/80">Drag a card up</span> to the table to play it.</li>
+              <li>• Tap the <span className="text-white/80">draw pile</span> to take a card.</li>
+              <li>• Hit <span className="text-white/80">Call Uno</span> when you reach 1 card.</li>
+              <li>• Catch a rival who forgot to call Uno.</li>
+              <li>• Use the <span className="text-white/80">💬 chat</span> to talk and react.</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* center pile area */}
       <div className="absolute inset-0 flex items-center justify-center gap-8 z-10">

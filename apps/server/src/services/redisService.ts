@@ -21,3 +21,7 @@ export async function setGameState(
 export async function deleteGameState(roomCode: string): Promise<void> {
   await getRedisClient().del(gameKey(roomCode));
 }
+
+export async function clearSession(token: string): Promise<void> {
+  await getRedisClient().del(`session:${token}`);
+}

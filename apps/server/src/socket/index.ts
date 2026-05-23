@@ -5,7 +5,7 @@ import type { GameState } from '@uno-game/game-logic';
 import { generateGuestToken, verifyGuestToken } from '../middleware/auth';
 import { getRedisClient } from '../config/redis';
 import { registerRoomHandlers } from './roomHandlers';
-import { registerGameHandlers } from './gameHandlers';
+import { registerGameHandlers, clearTurnTimer } from './gameHandlers';
 import { registerChatHandlers } from './chatHandlers';
 import { Room } from '../models/room.model';
 import { deleteGameState } from '../services/redisService';
@@ -163,6 +163,7 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
           }
 
           if (room.players.length === 0) {
+            clearTurnTimer(roomCode);
             await Room.deleteOne({ code: roomCode });
             await deleteGameState(roomCode);
             return;

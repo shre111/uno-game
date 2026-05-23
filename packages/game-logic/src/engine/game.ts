@@ -60,6 +60,8 @@ function basePersonalize(state: GameState, playerToken: string): PersonalizedGam
     pendingDrawCount: state.pendingDrawCount,
     unoCallPending: state.unoCallPending,
     lastAction: state.lastAction,
+    turnDuration: state.turnDuration,
+    turnStartedAt: state.turnStartedAt,
   };
 }
 
@@ -200,6 +202,14 @@ export const ClassicUNO = {
   callUNO(state: GameState, playerToken: string): GameState {
     if (!state.players.find((p) => p.token === playerToken)) return state;
     return { ...patchPlayer(state, playerToken, { hasCalledUno: true }), lastAction: { type: 'uno', playerToken } };
+  },
+
+  // Pass the turn to the next player without any action (used on turn timeout)
+  forceSkipTurn(state: GameState): GameState {
+    return {
+      ...state,
+      currentPlayerIndex: nextIndex(state.currentPlayerIndex, state.direction, state.players.length),
+    };
   },
 
   challengeUNO(state: GameState, challengerToken: string): { state: GameState; penalized: boolean; penalizedToken: string } {
@@ -493,6 +503,7 @@ export const FlipUNO = {
 
   callUNO: ClassicUNO.callUNO,
   challengeUNO: ClassicUNO.challengeUNO,
+  forceSkipTurn: ClassicUNO.forceSkipTurn,
 
   personalizeState(state: GameState, playerToken: string): PersonalizedGameState {
     return {
@@ -760,6 +771,13 @@ export const MercyUNO = {
 
   callUNO: ClassicUNO.callUNO,
   challengeUNO: ClassicUNO.challengeUNO,
+
+  forceSkipTurn(state: GameState): GameState {
+    return {
+      ...state,
+      currentPlayerIndex: nextMercyIndex(state.currentPlayerIndex, state.direction, state),
+    };
+  },
 
   personalizeState(state: GameState, playerToken: string): PersonalizedGameState {
     return {

@@ -14,7 +14,7 @@ export interface RoomPayload {
   variant?: string;
   players: RoomPlayer[];
   maxPlayers: number;
-  settings: { maxPlayers: number; private: boolean };
+  settings: { maxPlayers: number; private: boolean; turnDuration: number };
 }
 
 export interface ChatMessage {

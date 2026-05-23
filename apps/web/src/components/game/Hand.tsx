@@ -13,13 +13,14 @@ import type { Card as CardType, CardColor, PersonalizedPlayerState } from '../..
 export function PlayerHand() {
   const gameState = useGameStore((s) => s.gameState);
   const myToken = useAuthStore((s) => s.token);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [colorPickerCard, setColorPickerCard] = useState<{ index: number; card: CardType } | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   // Track whether we've done the initial deal animation
   const dealtRef = useRef(false);
   const [isDealing, setIsDealing] = useState(false);
   // Track last drawn card ids for draw animation
   const prevHandIdsRef = useRef<Set<string>>(new Set());
+  const newCardIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (gameState && !dealtRef.current) {
@@ -31,7 +32,6 @@ export function PlayerHand() {
   }, [gameState]);
 
   // Track newly drawn cards
-  const newCardIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!gameState) return;
     const currentIds = new Set(gameState.myHand.map((c) => c.id));
@@ -43,29 +43,18 @@ export function PlayerHand() {
   if (!gameState || !myToken) return null;
 
   const isMyTurn = gameState.players[gameState.currentPlayerIndex]?.token === myToken;
-
-  // Reset selection when it's no longer my turn
-  useEffect(() => {
-    if (!isMyTurn) setSelectedIndex(null);
-  }, [isMyTurn]);
   const hand = gameState.myHand;
   const isDarkSide = gameState.side === 'dark';
   const pendingDraw = gameState.pendingDrawCount ?? 0;
 
-  function handleCardClick(card: CardType, index: number) {
+  // Cards are played by dragging them up toward the center pile past a threshold.
+  function playByDrag(card: CardType, index: number) {
     if (!isMyTurn || !gameState) return;
-    const playable = isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw);
-    if (!playable) return;
-
-    if (selectedIndex === index) {
-      if (card.color === 'wild') {
-        setColorPickerCard({ index, card });
-      } else {
-        emit.playCard(index);
-        setSelectedIndex(null);
-      }
+    if (!isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw)) return;
+    if (card.color === 'wild') {
+      setColorPickerCard({ index, card });
     } else {
-      setSelectedIndex(index);
+      emit.playCard(index);
     }
   }
 
@@ -73,7 +62,6 @@ export function PlayerHand() {
     if (colorPickerCard) {
       emit.playCard(colorPickerCard.index, color);
       setColorPickerCard(null);
-      setSelectedIndex(null);
     }
   }
 
@@ -81,7 +69,32 @@ export function PlayerHand() {
   const fanOffset = Math.min(52, Math.floor(560 / Math.max(hand.length, 1)));
 
   return (
-    <div className="flex flex-col items-center gap-2 w-full px-2">
+    <div className="flex flex-col items-center gap-1 w-full px-2">
+      {/* Drop-to-play hint while dragging */}
+      <AnimatePresence>
+        {draggingId && (
+          <motion.div
+            className="fixed inset-x-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none flex justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="px-6 py-3 rounded-2xl border-2 border-dashed border-white/40 bg-black/30 backdrop-blur-sm text-white/80 text-sm font-bold"
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{ duration: 1.1, repeat: Infinity }}
+            >
+              ⬆ Release to play
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Subtle instruction on your turn */}
+      {isMyTurn && !draggingId && (
+        <span className="text-white/30 text-[11px] font-medium select-none">Drag a card up to play</span>
+      )}
+
       {/* Card fan — desktop absolute fan */}
       <div className="hidden sm:block relative" style={{ height: 155, width: '100%' }}>
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-center">
@@ -94,7 +107,7 @@ export function PlayerHand() {
               <motion.div
                 key={card.id}
                 className="absolute"
-                style={{ zIndex: selectedIndex === i ? 50 : i }}
+                style={{ zIndex: draggingId === card.id ? 100 : i }}
                 initial={isDealing
                   ? { y: -80, opacity: 0, rotate: -15 }
                   : isNew
@@ -107,13 +120,25 @@ export function PlayerHand() {
                     ? { type: 'spring', stiffness: 320, damping: 22 }
                     : { type: 'spring', stiffness: 300, damping: 25 }}
               >
-                <Card
-                  card={card}
-                  isPlayable={playable}
-                  isSelected={selectedIndex === i}
-                  isDarkSide={isDarkSide}
-                  onClick={() => handleCardClick(card, i)}
-                />
+                <motion.div
+                  drag={playable ? 'y' : false}
+                  dragSnapToOrigin
+                  dragElastic={0.4}
+                  dragMomentum={false}
+                  onDragStart={() => setDraggingId(card.id)}
+                  onDragEnd={(_, info) => {
+                    setDraggingId(null);
+                    if (info.offset.y < -90) playByDrag(card, i);
+                  }}
+                  whileDrag={{ scale: 1.12 }}
+                  style={{ cursor: playable ? 'grab' : 'default', touchAction: playable ? 'none' : 'auto' }}
+                >
+                  <Card
+                    card={card}
+                    isPlayable={playable}
+                    isDarkSide={isDarkSide}
+                  />
+                </motion.div>
               </motion.div>
             );
           })}
@@ -132,16 +157,28 @@ export function PlayerHand() {
                 initial={isNew ? { y: -30, opacity: 0 } : false}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 22, delay: isDealing ? i * 0.05 : 0 }}
+                style={{ zIndex: draggingId === card.id ? 100 : undefined }}
               >
-                <Card
-                  card={card}
-                  layoutId={`card-${card.id}`}
-                  isPlayable={playable}
-                  isSelected={selectedIndex === i}
-                  isDarkSide={isDarkSide}
-                  small
-                  onClick={() => handleCardClick(card, i)}
-                />
+                <motion.div
+                  drag={playable ? 'y' : false}
+                  dragSnapToOrigin
+                  dragElastic={0.4}
+                  dragMomentum={false}
+                  onDragStart={() => setDraggingId(card.id)}
+                  onDragEnd={(_, info) => {
+                    setDraggingId(null);
+                    if (info.offset.y < -70) playByDrag(card, i);
+                  }}
+                  whileDrag={{ scale: 1.15 }}
+                  style={{ cursor: playable ? 'grab' : 'default', touchAction: playable ? 'none' : 'auto' }}
+                >
+                  <Card
+                    card={card}
+                    isPlayable={playable}
+                    isDarkSide={isDarkSide}
+                    small
+                  />
+                </motion.div>
               </motion.div>
             );
           })}

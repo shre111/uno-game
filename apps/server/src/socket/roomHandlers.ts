@@ -1,7 +1,30 @@
 import { Room } from '../models/room.model';
 import { generateRoomCode } from '../services/roomService';
-import { getGameState, setGameState, deleteGameState } from '../services/redisService';
+import { getGameState, setGameState, deleteGameState, clearSession } from '../services/redisService';
+import { clearTurnTimer } from './gameHandlers';
 import type { IoServer, IoSocket, RoomPayload } from './types';
+
+/**
+ * `socket.data.currentRoom` can be restored from a persisted session even after
+ * the player was removed from the room (e.g. they closed the tab and the 30s
+ * disconnect timer pruned them). Before blocking create/join, confirm the player
+ * is genuinely still in that room; if not, clear the stale state so they can proceed.
+ */
+async function hasLiveRoom(socket: IoSocket): Promise<boolean> {
+  const roomCode = socket.data.currentRoom;
+  if (!roomCode) return false;
+
+  const { token } = socket.data.guest;
+  const room = await Room.findOne({ code: roomCode }).exec();
+  const stillMember = !!room && room.players.some((p) => p.token === token);
+
+  if (!stillMember) {
+    socket.leave(roomCode);
+    socket.data.currentRoom = undefined;
+    await clearSession(token);
+  }
+  return stillMember;
+}
 
 function toRoomPayload(room: InstanceType<typeof Room>): RoomPayload {
   return {
@@ -27,13 +50,14 @@ export function registerRoomHandlers(io: IoServer, socket: IoSocket): void {
   // ── room:create ────────────────────────────────────────────────────────────
   socket.on('room:create', async (data) => {
     try {
-      if (socket.data.currentRoom) {
+      if (await hasLiveRoom(socket)) {
         return emit('ALREADY_IN_ROOM', 'Leave your current room before creating one');
       }
 
-      const { username, avatar, variant = 'Classic', maxPlayers = 4, private: isPrivate = false } = data;
+      const { username, avatar, variant = 'Classic', maxPlayers = 4, private: isPrivate = false, turnDuration = 30 } = data;
       const { token } = socket.data.guest;
       const code = generateRoomCode();
+      const safeTurnDuration = Math.min(120, Math.max(10, turnDuration));
 
       const room = await new Room({
         code,
@@ -41,7 +65,7 @@ export function registerRoomHandlers(io: IoServer, socket: IoSocket): void {
         variant,
         players: [{ token, username, avatar, isHost: true }],
         maxPlayers,
-        settings: { maxPlayers, private: isPrivate },
+        settings: { maxPlayers, private: isPrivate, turnDuration: safeTurnDuration },
       }).save();
 
       socket.join(code);
@@ -59,7 +83,7 @@ export function registerRoomHandlers(io: IoServer, socket: IoSocket): void {
   // ── room:join ──────────────────────────────────────────────────────────────
   socket.on('room:join', async (data) => {
     try {
-      if (socket.data.currentRoom) {
+      if (await hasLiveRoom(socket)) {
         return emit('ALREADY_IN_ROOM', 'Leave your current room first');
       }
 
@@ -104,6 +128,7 @@ export function registerRoomHandlers(io: IoServer, socket: IoSocket): void {
       socket.data.currentRoom = undefined;
 
       if (!room || room.players.length === 0) {
+        clearTurnTimer(roomCode);
         await Room.deleteOne({ code: roomCode });
         await deleteGameState(roomCode);
         return;

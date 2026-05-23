@@ -9,6 +9,7 @@ export interface CreateRoomData {
   variant?: string;
   maxPlayers?: number;
   private?: boolean;
+  turnDuration?: number;
 }
 
 export interface JoinRoomData {
@@ -42,7 +43,7 @@ export interface RoomPayload {
   variant: string;
   players: RoomPlayerPayload[];
   maxPlayers: number;
-  settings: { maxPlayers: number; private: boolean };
+  settings: { maxPlayers: number; private: boolean; turnDuration: number };
 }
 
 export interface GameEndPayload {
