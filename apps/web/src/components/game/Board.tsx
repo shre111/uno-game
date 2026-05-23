@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
+import { playMyTurnChime, playTurnTick } from '../../lib/sound';
 // Game-end overlay is handled by the parent room page (with confetti)
 import { DrawPile, DiscardPile } from './Deck';
 import { PlayerHand, OpponentHand, CompactOpponentBadge } from './Hand';
@@ -46,10 +47,14 @@ export function GameBoard() {
   const showUnoButton = myHandCount === 1;
   const isDarkSide = gameState.side === 'dark';
 
-  // Turn reminder toast
+  // Turn reminder toast + chime
   useEffect(() => {
+    if (!currentTurnToken) return;
     if (isMyTurn) {
       toast('Your turn!', { duration: 2000, icon: '🃏' });
+      playMyTurnChime();
+    } else {
+      playTurnTick();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTurnToken]);
@@ -221,40 +226,47 @@ export function GameBoard() {
         <PlayerHand />
       </div>
 
-      {/* UNO action bar — Call UNO + a catch button per accusable opponent */}
+      {/* Catch alert — prominent top-center button per accusable opponent */}
       {(() => {
         const accusable = gameState.players.filter(
           (p) => p.token !== myToken && p.handCount === 1 && !p.hasCalledUno,
         );
-        if (!showUnoButton && accusable.length === 0) return null;
+        if (accusable.length === 0) return null;
         return (
-          <motion.div
-            className="absolute bottom-36 left-1/2 z-30 flex flex-wrap gap-2 justify-center max-w-[92vw]"
-            style={{ x: '-50%' }}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 340, damping: 24 }}
-          >
-            {showUnoButton && (
-              <button
-                className="bg-red-600 hover:bg-red-500 text-white font-black text-sm px-5 py-3 rounded-xl border border-white/30 shadow-lg transition-colors"
-                onClick={() => emit.callUNO()}
-              >
-                Call Uno!
-              </button>
-            )}
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 max-w-[92vw] px-2">
             {accusable.map((p) => (
-              <button
+              <motion.button
                 key={p.token}
-                className="bg-[#1e3a5f] hover:bg-[#254d7a] text-white font-bold text-sm px-5 py-3 rounded-xl border border-white/20 shadow-lg transition-colors"
+                className="bg-yellow-400 hover:bg-yellow-300 text-black font-black text-sm px-5 py-2.5 rounded-full border-2 border-white shadow-2xl whitespace-nowrap"
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: [1, 1.06, 1], opacity: 1 }}
+                transition={{ scale: { duration: 1.1, repeat: Infinity }, opacity: { duration: 0.2 } }}
+                whileTap={{ scale: 0.92 }}
                 onClick={() => emit.challengeUNO(p.token)}
               >
-                {p.avatar} {p.username} didn&apos;t call Uno
-              </button>
+                🚨 Catch {p.avatar} {p.username} — no UNO!
+              </motion.button>
             ))}
-          </motion.div>
+          </div>
         );
       })()}
+
+      {/* Call UNO button — bottom, when you reach 1 card */}
+      <AnimatePresence>
+        {showUnoButton && (
+          <motion.button
+            className="absolute bottom-36 left-1/2 z-30 bg-red-600 hover:bg-red-500 text-white font-black text-base px-7 py-3 rounded-xl border border-white/30 shadow-lg"
+            style={{ x: '-50%' }}
+            initial={{ y: 20, opacity: 0, scale: 0.8 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => emit.callUNO()}
+          >
+            Call Uno!
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* UNO alert toast */}
       <AnimatePresence>

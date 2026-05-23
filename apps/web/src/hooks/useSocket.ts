@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { getSocket, connectSocket, updateSocketAuth } from '../lib/socket';
+import { playMessagePop } from '../lib/sound';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 import type { RoomPayload, ChatMessage, GameEndResult } from '../types';
@@ -103,6 +104,10 @@ export function useSocket() {
 
       socket.on('chat:message', (msg: Omit<ChatMessage, 'id'>) => {
         addChatMessage({ id: crypto.randomUUID(), ...msg });
+        // Pop sound for messages from other players (not your own)
+        if (msg.playerToken !== useAuthStore.getState().token) {
+          playMessagePop();
+        }
       });
 
       socket.on('error', (err: { code: string; message: string }) => {

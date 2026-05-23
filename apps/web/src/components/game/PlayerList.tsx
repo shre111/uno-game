@@ -95,10 +95,12 @@ export function GameChat() {
   const [input, setInput] = useState('');
   const chatMessages = useGameStore((s) => s.chatMessages);
   const myToken = useAuthStore((s) => s.token);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
+  // Keep the latest message in view whenever a new one arrives or the panel opens
   useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = listRef.current;
+    if (open && el) el.scrollTop = el.scrollHeight;
   }, [chatMessages, open]);
 
   function sendMessage(msg: string) {
@@ -109,7 +111,7 @@ export function GameChat() {
 
   const chatPanel = (
     <div className="flex flex-col overflow-hidden h-full">
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+      <div ref={listRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
         {chatMessages.map((msg) => (
           <div
             key={msg.id}
@@ -124,7 +126,6 @@ export function GameChat() {
             </div>
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
 
       {/* reactions */}
