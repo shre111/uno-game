@@ -60,4 +60,6 @@ export const emit = {
     getSocket().emit('game:challengeUNO', { targetToken }),
 
   sendChat: (message: string) => getSocket().emit('chat:send', { message }),
+
+  sendReaction: (emoji: string) => getSocket().emit('reaction:send', { emoji }),
 };

@@ -15,6 +15,20 @@ function getCtx(): AudioContext | null {
   return ctx;
 }
 
+// Browsers (strictly on real HTTPS domains) block audio until the user
+// interacts. Resume/create the AudioContext on the first gesture so that
+// sounds triggered later by socket events (turns, messages) actually play.
+if (typeof window !== 'undefined') {
+  const events = ['pointerdown', 'touchstart', 'keydown'] as const;
+  const unlock = () => {
+    const c = getCtx();
+    if (!c || c.state === 'running') {
+      events.forEach((e) => window.removeEventListener(e, unlock));
+    }
+  };
+  events.forEach((e) => window.addEventListener(e, unlock));
+}
+
 function tone(freq: number, durationMs: number, type: OscillatorType = 'sine', gainVal = 0.07, delay = 0): void {
   const c = getCtx();
   if (!c) return;

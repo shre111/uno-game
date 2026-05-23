@@ -15,7 +15,7 @@ export function useSocket() {
   const { setAuth } = useAuthStore();
   const {
     setRoom, setGameState, addChatMessage, setUnoAlert,
-    setGameEndResult, setSocketError,
+    setGameEndResult, setSocketError, addLiveReaction,
   } = useGameStore();
 
   const prevPlayerCountRef = useRef<number>(0);
@@ -110,6 +110,10 @@ export function useSocket() {
         }
       });
 
+      socket.on('reaction:received', ({ emoji, username }: { emoji: string; token: string; username: string }) => {
+        addLiveReaction({ emoji, username });
+      });
+
       socket.on('error', (err: { code: string; message: string }) => {
         const msg = err?.message ?? 'Something went wrong';
         setSocketError(msg);
@@ -131,5 +135,5 @@ export function useSocket() {
     }
 
     connectSocket();
-  }, [setAuth, setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult, setSocketError]);
+  }, [setAuth, setRoom, setGameState, addChatMessage, setUnoAlert, setGameEndResult, setSocketError, addLiveReaction]);
 }

@@ -83,6 +83,7 @@ export interface ClientToServerEvents {
   'game:callUNO': () => void;
   'game:challengeUNO': (data?: { targetToken?: string }) => void;
   'chat:send': (data: ChatData) => void;
+  'reaction:send': (data: { emoji: string }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -94,6 +95,7 @@ export interface ServerToClientEvents {
   'game:unoCall': (data: UnoCallPayload) => void;
   'game:challenged': (data: { challengerToken: string; penalizedToken: string; successful: boolean }) => void;
   'chat:message': (data: ChatMessagePayload) => void;
+  'reaction:received': (data: { emoji: string; token: string; username: string }) => void;
   'error': (error: SocketError) => void;
   'auth:token': (data: { token: string; username: string; avatar: string; jwtToken: string }) => void;
 }

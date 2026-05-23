@@ -50,4 +50,25 @@ export function registerChatHandlers(io: IoServer, socket: IoSocket): void {
       timestamp: new Date().toISOString(),
     });
   });
+
+  // Ephemeral live reactions — broadcast a floating emoji to everyone in the room
+  socket.on('reaction:send', async ({ emoji }) => {
+    const roomCode = socket.data.currentRoom;
+    if (!roomCode || !emoji) return;
+    // Keep it to a short emoji string — never a full message
+    const safeEmoji = [...emoji].slice(0, 4).join('');
+    if (!safeEmoji) return;
+
+    const { token } = socket.data.guest;
+    let username = socket.data.guest.username;
+    try {
+      const room = await Room.findOne({ code: roomCode }).exec();
+      const me = room?.players.find((p) => p.token === token);
+      if (me) username = me.username;
+    } catch {
+      // Non-fatal — fall back to guest username
+    }
+
+    io.to(roomCode).emit('reaction:received', { emoji: safeEmoji, token, username });
+  });
 }

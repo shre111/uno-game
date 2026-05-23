@@ -86,22 +86,87 @@ export function ChatToast() {
   );
 }
 
+// ─── Reactions ───────────────────────────────────────────────────────────────
+
+const REACTIONS = ['👏', '😂', '😱', '🔥', '😭', '👀', '❤️', '🎉', '😎', '🤯', '👍', '👎', '🙏', '💀', '🤡', '🥳'];
+
+// Floating emoji burst overlay — shows reactions from any player rising and fading
+export function FloatingReactions() {
+  const reactions = useGameStore((s) => s.liveReactions);
+  const remove = useGameStore((s) => s.removeLiveReaction);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+      <AnimatePresence>
+        {reactions.map((r) => (
+          <motion.div
+            key={r.id}
+            className="absolute bottom-28 flex flex-col items-center"
+            style={{ left: `${r.x}%` }}
+            initial={{ y: 0, opacity: 0, scale: 0.4 }}
+            animate={{ y: -360, opacity: [0, 1, 1, 0], scale: 1.3 }}
+            transition={{ duration: 2.6, ease: 'easeOut' }}
+            onAnimationComplete={() => remove(r.id)}
+          >
+            <span className="text-5xl" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}>{r.emoji}</span>
+            <span className="text-white/70 text-[10px] font-semibold mt-0.5 max-w-[80px] truncate">{r.username}</span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Quick reactions launcher button + emoji tray, available during play
+export function ReactionBar() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-4 right-20 z-40 flex flex-col items-end gap-2">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="flex flex-wrap gap-2 max-w-[230px] justify-end bg-gray-900/95 border border-white/10 rounded-2xl p-3 shadow-2xl"
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+          >
+            {REACTIONS.map((r) => (
+              <button
+                key={r}
+                className="text-2xl hover:scale-125 active:scale-90 transition-transform"
+                onClick={() => emit.sendReaction(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        className="bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
+        onClick={() => setOpen((v) => !v)}
+        title="Send a reaction"
+      >
+        😀
+      </button>
+    </div>
+  );
+}
+
 // ─── GameChat ────────────────────────────────────────────────────────────────
 
-const REACTIONS = ['👏', '😂', '😱', '🔥', '😭', '👀'];
-
-export function GameChat() {
-  const [open, setOpen] = useState(false);
+function ChatPanel() {
   const [input, setInput] = useState('');
   const chatMessages = useGameStore((s) => s.chatMessages);
   const myToken = useAuthStore((s) => s.token);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Keep the latest message in view whenever a new one arrives or the panel opens
+  // Keep the latest message in view whenever a new one arrives
   useEffect(() => {
     const el = listRef.current;
-    if (open && el) el.scrollTop = el.scrollHeight;
-  }, [chatMessages, open]);
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chatMessages]);
 
   function sendMessage(msg: string) {
     if (!msg.trim()) return;
@@ -109,7 +174,7 @@ export function GameChat() {
     setInput('');
   }
 
-  const chatPanel = (
+  return (
     <div className="flex flex-col overflow-hidden h-full">
       <div ref={listRef} className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
         {chatMessages.map((msg) => (
@@ -128,13 +193,13 @@ export function GameChat() {
         ))}
       </div>
 
-      {/* reactions */}
-      <div className="flex gap-1 px-3 py-1 border-t border-white/10">
+      {/* reactions — tap to broadcast a floating emoji to everyone */}
+      <div className="flex flex-wrap gap-1.5 px-3 py-2 border-t border-white/10">
         {REACTIONS.map((r) => (
           <button
             key={r}
-            className="text-xl hover:scale-125 transition-transform"
-            onClick={() => sendMessage(r)}
+            className="text-2xl hover:scale-125 active:scale-90 transition-transform"
+            onClick={() => emit.sendReaction(r)}
           >
             {r}
           </button>
@@ -160,6 +225,10 @@ export function GameChat() {
       </div>
     </div>
   );
+}
+
+export function GameChat() {
+  const [open, setOpen] = useState(false);
 
   return (
     <>
@@ -174,7 +243,7 @@ export function GameChat() {
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               style={{ height: 360 }}
             >
-              {chatPanel}
+              <ChatPanel />
             </motion.div>
           )}
         </AnimatePresence>
@@ -221,7 +290,7 @@ export function GameChat() {
                   <div className="w-10 h-1 rounded-full bg-white/20" />
                 </div>
                 <div style={{ height: 'calc(100% - 20px)' }}>
-                  {chatPanel}
+                  <ChatPanel />
                 </div>
               </motion.div>
             </>
