@@ -85,6 +85,10 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       const room = await Room.findOne({ code: roomCode }).exec();
       if (!room) return emit('ROOM_NOT_FOUND', 'Room not found');
       if (room.host !== socket.data.guest.token) return emit('NOT_HOST', 'Only the host can start the game');
+      if (room.status === 'finished') {
+        room.status = 'waiting';
+        await room.save();
+      }
       if (room.status !== 'waiting') return emit('GAME_ALREADY_STARTED', 'Game has already started');
       if (room.players.length < 2) return emit('NOT_ENOUGH_PLAYERS', 'Need at least 2 players');
 
@@ -202,8 +206,14 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
 
       const state = raw as unknown as GameState;
       const engine = getEngine(state.variant);
-      const { state: newState } = engine.challengeUNO(state, socket.data.guest.token);
+      const { state: newState, penalizedToken } = engine.challengeUNO(state, socket.data.guest.token);
+      const successful = penalizedToken !== socket.data.guest.token;
 
+      io.to(roomCode).emit('game:challenged', {
+        challengerToken: socket.data.guest.token,
+        penalizedToken,
+        successful,
+      });
       await saveAndBroadcast(io, newState);
     } catch (err) {
       emit('INTERNAL_ERROR', err instanceof Error ? err.message : 'Failed to challenge UNO');

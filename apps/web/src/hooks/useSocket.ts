@@ -56,6 +56,19 @@ export function useSocket() {
 
       socket.on('game:stateUpdate', (state: PersonalizedGameState) => setGameState(state));
 
+      socket.on('game:challenged', ({ penalizedToken, successful }: { challengerToken: string; penalizedToken: string; successful: boolean }) => {
+        const myToken = useAuthStore.getState().token;
+        const gameState = useGameStore.getState().gameState;
+        const penalizedName = gameState?.players.find((p) => p.token === penalizedToken)?.username ?? 'Someone';
+        if (successful) {
+          toast.error(`🚨 ${penalizedName} caught! +4 cards!`, { duration: 3000 });
+        } else if (penalizedToken === myToken) {
+          toast.error('😅 False catch — you draw 2 cards', { duration: 3000 });
+        } else {
+          toast(`😅 False catch — ${penalizedName} draws 2`, { duration: 3000 });
+        }
+      });
+
       socket.on('game:unoCall', ({ playerToken, username }: { playerToken: string; username: string }) => {
         // Grab token at call-time from store
         const myToken = useAuthStore.getState().token;

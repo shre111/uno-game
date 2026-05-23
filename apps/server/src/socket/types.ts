@@ -91,6 +91,7 @@ export interface ServerToClientEvents {
   'game:stateUpdate': (state: PersonalizedGameState) => void;
   'game:ended': (result: GameEndPayload) => void;
   'game:unoCall': (data: UnoCallPayload) => void;
+  'game:challenged': (data: { challengerToken: string; penalizedToken: string; successful: boolean }) => void;
   'chat:message': (data: ChatMessagePayload) => void;
   'error': (error: SocketError) => void;
   'auth:token': (data: { token: string; username: string; avatar: string; jwtToken: string }) => void;

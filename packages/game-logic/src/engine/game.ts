@@ -208,8 +208,9 @@ export const ClassicUNO = {
     );
     const victimToken = target ? target.token : challengerToken;
     const successful = Boolean(target);
+    const penaltyCount = successful ? 4 : DRAW_PENALTY;
 
-    const { state: after, cards } = pullCards(state, DRAW_PENALTY);
+    const { state: after, cards } = pullCards(state, penaltyCount);
     const victim = after.players.find((p) => p.token === victimToken)!;
     const penalizedState = patchPlayer(after, victimToken, { hand: [...victim.hand, ...cards] });
 

@@ -202,15 +202,15 @@ export function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* challenge UNO button */}
-      {gameState.unoCallPending && gameState.unoCallPending !== myToken && (
+      {/* Caught! button — shown when any opponent has 1 card and hasn't called UNO */}
+      {gameState.players.some((p) => p.token !== myToken && p.handCount === 1 && !p.hasCalledUno) && (
         <motion.button
           className="absolute bottom-40 left-4 z-30 bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm px-4 py-2 rounded-full shadow-lg"
           initial={{ x: -50, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           onClick={() => emit.challengeUNO()}
         >
-          Challenge UNO!
+          Caught! 🚨
         </motion.button>
       )}
 

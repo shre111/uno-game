@@ -118,9 +118,10 @@ export default function RoomPage() {
   }, [gameEndResult]);
 
   function handlePlayAgain() {
+    const code = gameState?.roomCode;
     setGameEndResult(null);
     confettiFired.current = false;
-    emit.startGame();
+    if (code) router.push(`/lobby/${code}`);
   }
 
   function handleHome() {
