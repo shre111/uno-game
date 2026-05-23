@@ -43,6 +43,11 @@ export function PlayerHand() {
   if (!gameState || !myToken) return null;
 
   const isMyTurn = gameState.players[gameState.currentPlayerIndex]?.token === myToken;
+
+  // Reset selection when it's no longer my turn
+  useEffect(() => {
+    if (!isMyTurn) setSelectedIndex(null);
+  }, [isMyTurn]);
   const hand = gameState.myHand;
   const isDarkSide = gameState.side === 'dark';
   const pendingDraw = gameState.pendingDrawCount ?? 0;
@@ -89,7 +94,7 @@ export function PlayerHand() {
               <motion.div
                 key={card.id}
                 className="absolute"
-                style={{ x: offset, rotate: rotation, zIndex: selectedIndex === i ? 50 : i }}
+                style={{ zIndex: selectedIndex === i ? 50 : i }}
                 initial={isDealing
                   ? { y: -80, opacity: 0, rotate: -15 }
                   : isNew
@@ -104,7 +109,6 @@ export function PlayerHand() {
               >
                 <Card
                   card={card}
-                  layoutId={`card-${card.id}`}
                   isPlayable={playable}
                   isSelected={selectedIndex === i}
                   isDarkSide={isDarkSide}

@@ -45,8 +45,10 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
       }
     }
 
+    const GUEST_AVATARS = ['🦊', '🐼', '🦁', '🐯', '🐸', '🐧', '🦋', '🐨'];
     const guestNum = String(Math.floor(Math.random() * 9_999)).padStart(4, '0');
-    const newJwt = generateGuestToken(`Guest${guestNum}`, `avatar_${(parseInt(guestNum) % 8) + 1}`);
+    const avatarEmoji = GUEST_AVATARS[parseInt(guestNum) % 8]!;
+    const newJwt = generateGuestToken(`Guest${guestNum}`, avatarEmoji);
     socket.data.guest = verifyGuestToken(newJwt);
     socket.data.newToken = newJwt;
     next();
