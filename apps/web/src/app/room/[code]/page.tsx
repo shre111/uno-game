@@ -102,7 +102,7 @@ export default function RoomPage() {
 
   const gameState = useGameStore((s) => s.gameState);
   const gameEndResult = useGameStore((s) => s.gameEndResult);
-  const { setGameEndResult, setGameState } = useGameStore();
+  const { setGameEndResult, reset } = useGameStore();
   const confettiFired = useRef(false);
 
   // Fire confetti once when game ends
@@ -126,7 +126,9 @@ export default function RoomPage() {
 
   function handleHome() {
     emit.leaveRoom();
-    setGameEndResult(null);
+    // Clear room/game state before navigating, otherwise the home page sees a
+    // lingering room in the store and immediately redirects back to the lobby.
+    reset();
     router.push('/');
   }
 

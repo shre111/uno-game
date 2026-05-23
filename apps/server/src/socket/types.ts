@@ -81,7 +81,7 @@ export interface ClientToServerEvents {
   'game:playCard': (data: PlayCardData) => void;
   'game:drawCard': () => void;
   'game:callUNO': () => void;
-  'game:challengeUNO': () => void;
+  'game:challengeUNO': (data?: { targetToken?: string }) => void;
   'chat:send': (data: ChatData) => void;
 }
 

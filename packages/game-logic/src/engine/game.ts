@@ -212,10 +212,14 @@ export const ClassicUNO = {
     };
   },
 
-  challengeUNO(state: GameState, challengerToken: string): { state: GameState; penalized: boolean; penalizedToken: string } {
-    const target = state.players.find(
-      (p) => p.hand.length === 1 && !p.hasCalledUno && p.token !== challengerToken,
-    );
+  challengeUNO(state: GameState, challengerToken: string, accusedToken?: string): { state: GameState; penalized: boolean; penalizedToken: string } {
+    const isCatchable = (p: PlayerState) =>
+      p.hand.length === 1 && !p.hasCalledUno && p.token !== challengerToken;
+    // When a specific player is accused, only penalize them if they're actually
+    // catchable; otherwise it's a false accusation and the challenger is penalized.
+    const target = accusedToken
+      ? state.players.find((p) => p.token === accusedToken && isCatchable(p))
+      : state.players.find(isCatchable);
     const victimToken = target ? target.token : challengerToken;
     const successful = Boolean(target);
     const penaltyCount = successful ? 4 : DRAW_PENALTY;

@@ -254,7 +254,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
   });
 
   // ── game:challengeUNO ──────────────────────────────────────────────────────
-  socket.on('game:challengeUNO', async () => {
+  socket.on('game:challengeUNO', async (data) => {
     try {
       const roomCode = socket.data.currentRoom;
       if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
@@ -264,7 +264,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
 
       const state = raw as unknown as GameState;
       const engine = getEngine(state.variant);
-      const { state: newState, penalizedToken } = engine.challengeUNO(state, socket.data.guest.token);
+      const { state: newState, penalizedToken } = engine.challengeUNO(state, socket.data.guest.token, data?.targetToken);
       const successful = penalizedToken !== socket.data.guest.token;
 
       io.to(roomCode).emit('game:challenged', {

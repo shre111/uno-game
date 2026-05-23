@@ -56,7 +56,8 @@ export const emit = {
 
   callUNO: () => getSocket().emit('game:callUNO'),
 
-  challengeUNO: () => getSocket().emit('game:challengeUNO'),
+  challengeUNO: (targetToken?: string) =>
+    getSocket().emit('game:challengeUNO', { targetToken }),
 
   sendChat: (message: string) => getSocket().emit('chat:send', { message }),
 };

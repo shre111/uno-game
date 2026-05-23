@@ -13,8 +13,12 @@ import type { Card as CardType, CardColor, PersonalizedPlayerState } from '../..
 export function PlayerHand() {
   const gameState = useGameStore((s) => s.gameState);
   const myToken = useAuthStore((s) => s.token);
-  const [colorPickerCard, setColorPickerCard] = useState<{ index: number; card: CardType } | null>(null);
+  const [colorPickerCard, setColorPickerCard] = useState<CardType | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  // Cards optimistically removed from the hand the instant they're played (before
+  // the server confirms) so dropping a card feels immediate with no snap-back.
+  const [pendingPlayIds, setPendingPlayIds] = useState<Set<string>>(new Set());
+  const socketError = useGameStore((s) => s.socketError);
   // Track whether we've done the initial deal animation
   const dealtRef = useRef(false);
   const [isDealing, setIsDealing] = useState(false);
@@ -40,33 +44,50 @@ export function PlayerHand() {
     prevHandIdsRef.current = currentIds;
   }, [gameState?.myHand]);
 
+  // Reconcile optimistic plays: a fresh authoritative state means the play
+  // resolved (card already gone), and an error rolls it back so it reappears.
+  useEffect(() => {
+    setPendingPlayIds((prev) => (prev.size ? new Set() : prev));
+  }, [gameState]);
+  useEffect(() => {
+    if (socketError) setPendingPlayIds((prev) => (prev.size ? new Set() : prev));
+  }, [socketError]);
+
   if (!gameState || !myToken) return null;
 
   const isMyTurn = gameState.players[gameState.currentPlayerIndex]?.token === myToken;
   const hand = gameState.myHand;
+  // What's actually rendered — full hand minus cards already optimistically played
+  const visibleHand = hand.filter((c) => !pendingPlayIds.has(c.id));
   const isDarkSide = gameState.side === 'dark';
   const pendingDraw = gameState.pendingDrawCount ?? 0;
 
   // Cards are played by dragging them up toward the center pile past a threshold.
-  function playByDrag(card: CardType, index: number) {
+  function playByDrag(card: CardType) {
     if (!isMyTurn || !gameState) return;
     if (!isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw)) return;
     if (card.color === 'wild') {
-      setColorPickerCard({ index, card });
+      setColorPickerCard(card);
     } else {
-      emit.playCard(index);
+      const realIndex = hand.findIndex((c) => c.id === card.id);
+      if (realIndex < 0) return;
+      setPendingPlayIds((prev) => new Set(prev).add(card.id));
+      emit.playCard(realIndex);
     }
   }
 
   function handleColorChosen(color: CardColor) {
-    if (colorPickerCard) {
-      emit.playCard(colorPickerCard.index, color);
-      setColorPickerCard(null);
+    if (!colorPickerCard) return;
+    const realIndex = hand.findIndex((c) => c.id === colorPickerCard.id);
+    if (realIndex >= 0) {
+      setPendingPlayIds((prev) => new Set(prev).add(colorPickerCard.id));
+      emit.playCard(realIndex, color);
     }
+    setColorPickerCard(null);
   }
 
   // Responsive fan: smaller on mobile
-  const fanOffset = Math.min(52, Math.floor(560 / Math.max(hand.length, 1)));
+  const fanOffset = Math.min(52, Math.floor(560 / Math.max(visibleHand.length, 1)));
 
   return (
     <div className="flex flex-col items-center gap-1 w-full px-2">
@@ -98,10 +119,10 @@ export function PlayerHand() {
       {/* Card fan — desktop absolute fan */}
       <div className="hidden sm:block relative" style={{ height: 155, width: '100%' }}>
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-center">
-          {hand.map((card, i) => {
+          {visibleHand.map((card, i) => {
             const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw);
-            const offset = (i - (hand.length - 1) / 2) * fanOffset;
-            const rotation = (i - (hand.length - 1) / 2) * (Math.min(3, 12 / Math.max(hand.length, 1)));
+            const offset = (i - (visibleHand.length - 1) / 2) * fanOffset;
+            const rotation = (i - (visibleHand.length - 1) / 2) * (Math.min(3, 12 / Math.max(visibleHand.length, 1)));
             const isNew = newCardIds.current.has(card.id);
             return (
               <motion.div
@@ -128,7 +149,7 @@ export function PlayerHand() {
                   onDragStart={() => setDraggingId(card.id)}
                   onDragEnd={(_, info) => {
                     setDraggingId(null);
-                    if (info.offset.y < -90) playByDrag(card, i);
+                    if (info.offset.y < -90) playByDrag(card);
                   }}
                   whileDrag={{ scale: 1.12 }}
                   style={{ cursor: playable ? 'grab' : 'default', touchAction: playable ? 'none' : 'auto' }}
@@ -148,7 +169,7 @@ export function PlayerHand() {
       {/* Mobile: horizontal scroll row */}
       <div className="sm:hidden w-full overflow-x-auto pb-1">
         <div className="flex items-end gap-1 px-2" style={{ width: 'max-content', minWidth: '100%', justifyContent: 'center' }}>
-          {hand.map((card, i) => {
+          {visibleHand.map((card, i) => {
             const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw);
             const isNew = newCardIds.current.has(card.id);
             return (
@@ -167,7 +188,7 @@ export function PlayerHand() {
                   onDragStart={() => setDraggingId(card.id)}
                   onDragEnd={(_, info) => {
                     setDraggingId(null);
-                    if (info.offset.y < -70) playByDrag(card, i);
+                    if (info.offset.y < -70) playByDrag(card);
                   }}
                   whileDrag={{ scale: 1.15 }}
                   style={{ cursor: playable ? 'grab' : 'default', touchAction: playable ? 'none' : 'auto' }}

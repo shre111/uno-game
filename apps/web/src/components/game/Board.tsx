@@ -221,41 +221,38 @@ export function GameBoard() {
         <PlayerHand />
       </div>
 
-      {/* UNO action bar — Call UNO + Catch opponent */}
+      {/* UNO action bar — Call UNO + a catch button per accusable opponent */}
       {(() => {
-        const catchTarget = gameState.players.find((p) => p.token !== myToken && p.handCount === 1 && !p.hasCalledUno);
-        if (!showUnoButton && !catchTarget) return null;
+        const accusable = gameState.players.filter(
+          (p) => p.token !== myToken && p.handCount === 1 && !p.hasCalledUno,
+        );
+        if (!showUnoButton && accusable.length === 0) return null;
         return (
-          <AnimatePresence>
-            <motion.div
-              className="absolute bottom-36 left-1/2 z-30 flex overflow-hidden rounded-xl border border-white/20 shadow-2xl"
-              style={{ x: '-50%' }}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 20, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 340, damping: 24 }}
-            >
-              {showUnoButton && (
-                <button
-                  className="bg-[#1e3a5f] hover:bg-[#254d7a] text-white font-bold text-sm px-5 py-3 transition-colors"
-                  onClick={() => emit.callUNO()}
-                >
-                  Call Uno
-                </button>
-              )}
-              {showUnoButton && catchTarget && (
-                <div className="w-px bg-white/20" />
-              )}
-              {catchTarget && (
-                <button
-                  className="bg-[#1e3a5f] hover:bg-[#254d7a] text-white font-bold text-sm px-5 py-3 transition-colors"
-                  onClick={() => emit.challengeUNO()}
-                >
-                  {catchTarget.username} didn&apos;t call Uno
-                </button>
-              )}
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            className="absolute bottom-36 left-1/2 z-30 flex flex-wrap gap-2 justify-center max-w-[92vw]"
+            style={{ x: '-50%' }}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+          >
+            {showUnoButton && (
+              <button
+                className="bg-red-600 hover:bg-red-500 text-white font-black text-sm px-5 py-3 rounded-xl border border-white/30 shadow-lg transition-colors"
+                onClick={() => emit.callUNO()}
+              >
+                Call Uno!
+              </button>
+            )}
+            {accusable.map((p) => (
+              <button
+                key={p.token}
+                className="bg-[#1e3a5f] hover:bg-[#254d7a] text-white font-bold text-sm px-5 py-3 rounded-xl border border-white/20 shadow-lg transition-colors"
+                onClick={() => emit.challengeUNO(p.token)}
+              >
+                {p.avatar} {p.username} didn&apos;t call Uno
+              </button>
+            ))}
+          </motion.div>
         );
       })()}
 
