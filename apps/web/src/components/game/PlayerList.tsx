@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { emit } from '../../lib/socket';
 import type { ChatMessage } from '../../types';
 
@@ -83,6 +84,65 @@ export function ChatToast() {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// ─── SoundControl ────────────────────────────────────────────────────────────
+
+export function SoundControl() {
+  const soundEnabled = useSettingsStore((s) => s.soundEnabled);
+  const volume = useSettingsStore((s) => s.volume);
+  const setSoundEnabled = useSettingsStore((s) => s.setSoundEnabled);
+  const setVolume = useSettingsStore((s) => s.setVolume);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="absolute top-2 right-2 z-40 flex flex-col items-end gap-1">
+      <button
+        className="w-9 h-9 rounded-full bg-black/50 border border-white/15 text-white/80 flex items-center justify-center text-base shadow"
+        onClick={() => setOpen((v) => !v)}
+        title="Sound settings"
+      >
+        {soundEnabled ? '🔊' : '🔇'}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="bg-gray-900/95 border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-3 w-44"
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-white/80 text-xs font-semibold">Sound</span>
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${soundEnabled ? 'bg-green-600' : 'bg-white/15'}`}
+              >
+                <motion.div
+                  className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow"
+                  animate={{ x: soundEnabled ? 20 : 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/40 text-xs">Vol</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={volume}
+                disabled={!soundEnabled}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                className="flex-1 accent-green-500 disabled:opacity-40"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

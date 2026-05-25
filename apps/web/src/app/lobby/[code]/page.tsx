@@ -13,9 +13,8 @@ const VARIANTS = ['Classic', 'Flip', 'Mercy'] as const;
 const MAX_SLOTS = 6;
 
 const HOUSE_RULE_DEFS: Array<{ key: keyof HouseRules; label: string; desc: string }> = [
-  { key: 'stackDraw', label: 'Stack Draw Cards', desc: '+2 can stack on another +2' },
-  { key: 'jumpIn', label: 'Jump In', desc: 'Play identical card out of turn' },
-  { key: 'forcePlay', label: 'Force Play', desc: 'Must play drawn card if playable' },
+  { key: 'stackDraw', label: 'Stack Draw Cards', desc: '+2/+4 can stack onto a pending draw' },
+  { key: 'drawToPlay', label: 'Draw to Play', desc: 'Keep drawing until you get a playable card' },
 ];
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
@@ -81,7 +80,7 @@ export default function LobbyPage() {
   const myToken = useAuthStore((s) => s.token);
 
   const [variant, setVariant] = useState('Classic');
-  const [houseRules, setHouseRules] = useState<HouseRules>({ stackDraw: false, jumpIn: false, forcePlay: false });
+  const [houseRules, setHouseRules] = useState<HouseRules>({ stackDraw: false, drawToPlay: false });
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
 
@@ -92,10 +91,37 @@ export default function LobbyPage() {
     }
   }, [gameState, code, router]);
 
-  function copyLink() {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function copyLink() {
+    const inviteUrl = `${window.location.origin}/join/${code}`;
+    let ok = false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(inviteUrl);
+        ok = true;
+      }
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      // Fallback for browsers/contexts where the async clipboard API is blocked
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = inviteUrl;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch {
+        ok = false;
+      }
+    }
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   }
 
   function handleLeave() {
@@ -105,7 +131,7 @@ export default function LobbyPage() {
 
   function handleStart() {
     setStarting(true);
-    emit.startGame();
+    emit.startGame(houseRules);
   }
 
   function toggleRule(key: keyof HouseRules) {
@@ -168,7 +194,7 @@ export default function LobbyPage() {
               </AnimatePresence>
             </button>
           </div>
-          <p className="text-white/30 text-xs mt-2">Share this code with friends</p>
+          <p className="text-white/30 text-xs mt-2">Tap ⎘ to copy an invite link, or share the code</p>
         </motion.div>
 
         {/* player slots */}
@@ -211,7 +237,7 @@ export default function LobbyPage() {
 
             {/* house rules */}
             <div>
-              <p className="text-white/40 text-xs uppercase tracking-widest mb-2">House Rules</p>
+              <p className="text-white/40 text-xs uppercase tracking-widest mb-2">House Rules <span className="normal-case tracking-normal text-white/25">· Classic</span></p>
               <div className="flex flex-col gap-2">
                 {HOUSE_RULE_DEFS.map(({ key, label, desc }) => (
                   <div

@@ -1,5 +1,5 @@
 import type { GuestPayload } from '../middleware/auth';
-import type { CardColor, PersonalizedGameState } from '@uno-game/game-logic';
+import type { CardColor, PersonalizedGameState, HouseRules } from '@uno-game/game-logic';
 
 // ── Inbound event payloads ──────────────────────────────────────────────────
 
@@ -77,7 +77,7 @@ export interface ClientToServerEvents {
   'room:create': (data: CreateRoomData) => void;
   'room:join': (data: JoinRoomData) => void;
   'room:leave': () => void;
-  'game:start': () => void;
+  'game:start': (data?: { houseRules?: HouseRules }) => void;
   'game:playCard': (data: PlayCardData) => void;
   'game:drawCard': () => void;
   'game:callUNO': () => void;

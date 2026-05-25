@@ -5,6 +5,7 @@ import { Card } from './Card';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
+import { playDrawSnap } from '../../lib/sound';
 import type { Card as CardType } from '../../types';
 
 export function DrawPile() {
@@ -23,7 +24,7 @@ export function DrawPile() {
       <motion.div
         className={`relative ${isMyTurn ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
         whileHover={isMyTurn ? { scale: 1.05 } : {}}
-        onTap={isMyTurn ? () => emit.drawCard() : undefined}
+        onTap={isMyTurn ? () => { playDrawSnap(); emit.drawCard(); } : undefined}
       >
         {/* stacked effect */}
         <div className="absolute top-1 left-1 opacity-40">

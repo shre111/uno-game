@@ -1,7 +1,13 @@
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
-import { ClassicUNO } from '@uno-game/game-logic';
+import { ClassicUNO, FlipUNO, MercyUNO } from '@uno-game/game-logic';
 import type { GameState } from '@uno-game/game-logic';
+
+function getEngine(variant?: string) {
+  if (variant === 'Flip') return FlipUNO;
+  if (variant === 'Mercy') return MercyUNO;
+  return ClassicUNO;
+}
 import { generateGuestToken, verifyGuestToken } from '../middleware/auth';
 import { getRedisClient } from '../config/redis';
 import { registerRoomHandlers } from './roomHandlers';
@@ -86,12 +92,16 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
       const sessionRaw = await redis.get(`session:${token}`);
       if (sessionRaw) {
         const { roomCode } = JSON.parse(sessionRaw) as { roomCode: string };
-        socket.data.currentRoom = roomCode;
-        socket.join(roomCode);
-
         const stateRaw = await redis.get(`game:${roomCode}`);
-        if (stateRaw) {
-          const gameState = JSON.parse(stateRaw) as GameState;
+        const gameState = stateRaw ? (JSON.parse(stateRaw) as GameState) : null;
+        // Only restore if this is a real, current game the player actually belongs
+        // to. A stale session pointing at an old/other game must NOT push that
+        // game's state onto this client (that was clobbering the live game view).
+        const isMember = !!gameState && gameState.players.some((p) => p.token === token);
+
+        if (isMember && gameState) {
+          socket.data.currentRoom = roomCode;
+          socket.join(roomCode);
           const updated: GameState = {
             ...gameState,
             players: gameState.players.map((p) =>
@@ -99,7 +109,11 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
             ),
           };
           await redis.set(`game:${roomCode}`, JSON.stringify(updated), 'EX', GAME_TTL_S);
-          io.to(token).emit('game:stateUpdate', ClassicUNO.personalizeState(updated, token));
+          const engine = getEngine(updated.variant);
+          io.to(token).emit('game:stateUpdate', engine.personalizeState(updated, token));
+        } else {
+          // Stale session — drop it so it can't interfere with a new room/game
+          await redis.del(`session:${token}`);
         }
       }
     } catch {

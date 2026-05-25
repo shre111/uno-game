@@ -62,6 +62,7 @@ function basePersonalize(state: GameState, playerToken: string): PersonalizedGam
     lastAction: state.lastAction,
     turnDuration: state.turnDuration,
     turnStartedAt: state.turnStartedAt,
+    houseRules: state.houseRules,
   };
 }
 
@@ -113,7 +114,9 @@ export const ClassicUNO = {
     const player = state.players[pIdx]!;
     const card = player.hand[cardIndex];
     if (!card) return { state, error: 'INVALID_CARD_INDEX' };
-    if (!isCardPlayable(card, state.topCard, state.currentColor)) {
+    const stacking = state.houseRules?.stackDraw === true;
+    const pendingForCheck = stacking ? state.pendingDrawCount : 0;
+    if (!isCardPlayable(card, state.topCard, state.currentColor, pendingForCheck, { classicStack: stacking })) {
       return { state, error: 'CARD_NOT_PLAYABLE' };
     }
 
@@ -151,6 +154,11 @@ export const ClassicUNO = {
         break;
       }
       case 'draw2': {
+        if (stacking) {
+          // Accumulate the draw and pass the turn so the next player may stack or draw
+          s = { ...s, pendingDrawCount: s.pendingDrawCount + DRAW_TWO_COUNT, currentPlayerIndex: nextIndex(pIdx, s.direction, s.players.length), lastAction: action };
+          break;
+        }
         const nextIdx = nextIndex(pIdx, s.direction, s.players.length);
         const { state: after, cards } = pullCards(s, DRAW_TWO_COUNT);
         s = {
@@ -162,6 +170,10 @@ export const ClassicUNO = {
         break;
       }
       case 'wild4': {
+        if (stacking) {
+          s = { ...s, pendingDrawCount: s.pendingDrawCount + WILD_FOUR_COUNT, currentPlayerIndex: nextIndex(pIdx, s.direction, s.players.length), lastAction: action };
+          break;
+        }
         const nextIdx = nextIndex(pIdx, s.direction, s.players.length);
         const { state: after, cards } = pullCards(s, WILD_FOUR_COUNT);
         s = {
@@ -184,10 +196,51 @@ export const ClassicUNO = {
     const pIdx = state.players.findIndex((p) => p.token === playerToken);
     if (pIdx === -1 || pIdx !== state.currentPlayerIndex) return { state, drawnCards: [] };
 
+    const player = state.players[pIdx]!;
+    const stacking = state.houseRules?.stackDraw === true;
+
+    // Stacking: a player who can't (or won't) stack pays the accumulated draw and passes
+    if (stacking && state.pendingDrawCount > 0) {
+      const { state: after, cards } = pullCards(state, state.pendingDrawCount);
+      return {
+        state: {
+          ...patchPlayer(after, playerToken, { hand: [...player.hand, ...cards] }),
+          pendingDrawCount: 0,
+          currentPlayerIndex: nextIndex(pIdx, state.direction, state.players.length),
+          lastAction: { type: 'draw', playerToken, count: cards.length },
+        },
+        drawnCards: cards,
+      };
+    }
+
+    // Draw-to-play: keep drawing until a playable card appears, then keep the turn
+    if (state.houseRules?.drawToPlay === true && !hasPlayableCard(player.hand, state.topCard, state.currentColor, 0)) {
+      let s = state;
+      let currentHand = [...player.hand];
+      const allDrawn: Card[] = [];
+      while (!hasPlayableCard(currentHand, s.topCard, s.currentColor, 0)) {
+        const { state: nextS, cards } = pullCards(s, 1);
+        if (cards.length === 0) break; // deck exhausted
+        s = nextS;
+        allDrawn.push(...cards);
+        currentHand = [...currentHand, ...cards];
+      }
+      if (allDrawn.length === 0) {
+        return {
+          state: { ...state, currentPlayerIndex: nextIndex(pIdx, state.direction, state.players.length), lastAction: { type: 'draw', playerToken, count: 0 } },
+          drawnCards: [],
+        };
+      }
+      return {
+        state: { ...patchPlayer(s, playerToken, { hand: currentHand }), lastAction: { type: 'draw', playerToken, count: allDrawn.length } },
+        drawnCards: allDrawn,
+      };
+    }
+
     const { state: after, cards } = pullCards(state, 1);
     if (cards.length === 0) return { state, drawnCards: [] };
 
-    const newState = patchPlayer(after, playerToken, { hand: [...state.players[pIdx]!.hand, ...cards] });
+    const newState = patchPlayer(after, playerToken, { hand: [...player.hand, ...cards] });
 
     return {
       state: {

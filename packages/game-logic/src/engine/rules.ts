@@ -6,9 +6,14 @@ export function isCardPlayable(
   topCard: Card,
   currentColor: CardColor,
   pendingDrawCount = 0,
+  opts?: { classicStack?: boolean },
 ): boolean {
-  // Mercy stacking: when a draw is pending, only draw cards of equal or higher value can be played
   if (pendingDrawCount > 0) {
+    // Classic stacking: any +2/+4 can be stacked onto the pending draw
+    if (opts?.classicStack) {
+      return card.value === 'draw2' || card.value === 'wild4';
+    }
+    // Mercy stacking: only draw cards of equal or higher value can be played
     const drawAmount = MERCY_DRAW_AMOUNTS[card.value] ?? 0;
     return drawAmount >= pendingDrawCount;
   }
@@ -24,8 +29,9 @@ export function hasPlayableCard(
   topCard: Card,
   currentColor: CardColor,
   pendingDrawCount = 0,
+  opts?: { classicStack?: boolean },
 ): boolean {
-  return hand.some((c) => isCardPlayable(c, topCard, currentColor, pendingDrawCount));
+  return hand.some((c) => isCardPlayable(c, topCard, currentColor, pendingDrawCount, opts));
 }
 
 export function nextIndex(

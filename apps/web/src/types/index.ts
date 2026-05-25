@@ -1,4 +1,4 @@
-export type { Card, CardColor, CardValue, PersonalizedGameState, PersonalizedPlayerState, LastAction } from '@uno-game/game-logic';
+export type { Card, CardColor, CardValue, PersonalizedGameState, PersonalizedPlayerState, LastAction, HouseRules } from '@uno-game/game-logic';
 
 export interface RoomPlayer {
   token: string;
@@ -31,10 +31,4 @@ export interface GameEndResult {
   winnerUsername: string;
   durationMs: number;
   players: Array<{ token: string; username: string; cardCount: number }>;
-}
-
-export interface HouseRules {
-  stackDraw: boolean;
-  jumpIn: boolean;
-  forcePlay: boolean;
 }

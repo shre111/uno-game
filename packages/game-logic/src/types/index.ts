@@ -19,6 +19,13 @@ export type CardValue =
 
 export type GameVariant = 'Classic' | 'Flip' | 'Mercy';
 
+export interface HouseRules {
+  // +2/+4 can be stacked onto a pending draw instead of drawing immediately
+  stackDraw: boolean;
+  // Drawing pulls cards until a playable one appears (and keeps the turn)
+  drawToPlay: boolean;
+}
+
 export interface Card {
   id: string;
   color: CardColor;
@@ -67,6 +74,7 @@ export interface GameState {
   // Per-turn time limit (seconds) and the epoch-ms timestamp the current turn began
   turnDuration?: number;
   turnStartedAt?: number;
+  houseRules?: HouseRules;
 }
 
 export interface PersonalizedPlayerState {
@@ -99,4 +107,5 @@ export interface PersonalizedGameState {
   lastAction?: LastAction;
   turnDuration?: number;
   turnStartedAt?: number;
+  houseRules?: HouseRules;
 }

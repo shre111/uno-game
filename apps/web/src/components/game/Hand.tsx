@@ -7,6 +7,7 @@ import { ColorPicker } from './ColorPicker';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
+import { playCardWhoosh } from '../../lib/sound';
 import { isCardPlayable } from '@uno-game/game-logic';
 import type { Card as CardType, CardColor, PersonalizedPlayerState } from '../../types';
 
@@ -61,17 +62,21 @@ export function PlayerHand() {
   const visibleHand = hand.filter((c) => !pendingPlayIds.has(c.id));
   const isDarkSide = gameState.side === 'dark';
   const pendingDraw = gameState.pendingDrawCount ?? 0;
+  // Classic stacking changes which cards are playable onto a pending draw
+  const classicStack = gameState.variant === 'Classic' && gameState.houseRules?.stackDraw === true;
+  const playableOpts = { classicStack };
 
   // Cards are played by dragging them up toward the center pile past a threshold.
   function playByDrag(card: CardType) {
     if (!isMyTurn || !gameState) return;
-    if (!isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw)) return;
+    if (!isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw, playableOpts)) return;
     if (card.color === 'wild') {
       setColorPickerCard(card);
     } else {
       const realIndex = hand.findIndex((c) => c.id === card.id);
       if (realIndex < 0) return;
       setPendingPlayIds((prev) => new Set(prev).add(card.id));
+      playCardWhoosh();
       emit.playCard(realIndex);
     }
   }
@@ -81,6 +86,7 @@ export function PlayerHand() {
     const realIndex = hand.findIndex((c) => c.id === colorPickerCard.id);
     if (realIndex >= 0) {
       setPendingPlayIds((prev) => new Set(prev).add(colorPickerCard.id));
+      playCardWhoosh();
       emit.playCard(realIndex, color);
     }
     setColorPickerCard(null);
@@ -120,7 +126,7 @@ export function PlayerHand() {
       <div className="hidden sm:block relative" style={{ height: 155, width: '100%' }}>
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-center">
           {visibleHand.map((card, i) => {
-            const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw);
+            const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw, playableOpts);
             const offset = (i - (visibleHand.length - 1) / 2) * fanOffset;
             const rotation = (i - (visibleHand.length - 1) / 2) * (Math.min(3, 12 / Math.max(visibleHand.length, 1)));
             const isNew = newCardIds.current.has(card.id);
@@ -170,7 +176,7 @@ export function PlayerHand() {
       <div className="sm:hidden w-full overflow-x-auto pb-1">
         <div className="flex items-end gap-1 px-2" style={{ width: 'max-content', minWidth: '100%', justifyContent: 'center' }}>
           {visibleHand.map((card, i) => {
-            const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw);
+            const playable = isMyTurn && isCardPlayable(card, gameState.topCard, gameState.currentColor, pendingDraw, playableOpts);
             const isNew = newCardIds.current.has(card.id);
             return (
               <motion.div

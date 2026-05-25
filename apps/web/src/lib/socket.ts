@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import type { CardColor } from '../types';
+import type { CardColor, HouseRules } from '../types';
 
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3001';
 
@@ -47,7 +47,7 @@ export const emit = {
 
   leaveRoom: () => getSocket().emit('room:leave'),
 
-  startGame: () => getSocket().emit('game:start'),
+  startGame: (houseRules?: HouseRules) => getSocket().emit('game:start', { houseRules }),
 
   playCard: (cardIndex: number, chosenColor?: CardColor) =>
     getSocket().emit('game:playCard', { cardIndex, chosenColor }),

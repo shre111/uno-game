@@ -134,7 +134,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
   const emit = (code: string, message: string) => socket.emit('error', { code, message });
 
   // ── game:start ─────────────────────────────────────────────────────────────
-  socket.on('game:start', async () => {
+  socket.on('game:start', async (data) => {
     try {
       const roomCode = socket.data.currentRoom;
       if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
@@ -158,6 +158,10 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       const engine = getEngine(room.variant);
       const gameState = engine.createInitialState(initPlayers, roomCode);
       gameState.turnDuration = room.settings?.turnDuration ?? 30;
+      gameState.houseRules = {
+        stackDraw: data?.houseRules?.stackDraw ?? false,
+        drawToPlay: data?.houseRules?.drawToPlay ?? false,
+      };
 
       room.status = 'playing';
       await room.save();

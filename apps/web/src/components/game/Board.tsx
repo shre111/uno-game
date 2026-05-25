@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
-import { playMyTurnChime, playTurnTick } from '../../lib/sound';
+import { playMyTurnChime, playTurnTick, playCardWhoosh, playDrawSnap } from '../../lib/sound';
 // Game-end overlay is handled by the parent room page (with confetti)
 import { DrawPile, DiscardPile } from './Deck';
 import { PlayerHand, OpponentHand, CompactOpponentBadge } from './Hand';
-import { TurnTimer, GameChat, ChatToast, ReactionBar, FloatingReactions } from './PlayerList';
+import { TurnTimer, GameChat, ChatToast, ReactionBar, FloatingReactions, SoundControl } from './PlayerList';
 
 const OPPONENT_POSITIONS: Record<number, string[]> = {
   2: ['top-center'],
@@ -58,6 +58,21 @@ export function GameBoard() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTurnToken]);
+
+  // Card sound effects for OTHER players' actions (own actions play instantly at
+  // their source). Driven off lastAction so every client hears plays/draws.
+  const lastActionKeyRef = useRef<string>('');
+  useEffect(() => {
+    const la = gameState.lastAction;
+    if (!la) return;
+    const key = JSON.stringify(la);
+    if (key === lastActionKeyRef.current) return;
+    lastActionKeyRef.current = key;
+    if ((la.type === 'play' || la.type === 'draw') && la.playerToken !== myToken) {
+      if (la.type === 'play') playCardWhoosh();
+      else playDrawSnap();
+    }
+  }, [gameState.lastAction, myToken]);
   const eliminated = gameState.eliminated ?? [];
   const amEliminated = eliminated.includes(myToken ?? '');
 
@@ -282,11 +297,12 @@ export function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* chat toast + panel + reactions */}
+      {/* chat toast + panel + reactions + sound */}
       <ChatToast />
       <GameChat />
       <ReactionBar />
       <FloatingReactions />
+      <SoundControl />
     </div>
   );
 }
