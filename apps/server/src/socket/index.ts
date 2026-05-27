@@ -92,27 +92,36 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
       const sessionRaw = await redis.get(`session:${token}`);
       if (sessionRaw) {
         const { roomCode } = JSON.parse(sessionRaw) as { roomCode: string };
-        const stateRaw = await redis.get(`game:${roomCode}`);
-        const gameState = stateRaw ? (JSON.parse(stateRaw) as GameState) : null;
-        // Only restore if this is a real, current game the player actually belongs
-        // to. A stale session pointing at an old/other game must NOT push that
-        // game's state onto this client (that was clobbering the live game view).
-        const isMember = !!gameState && gameState.players.some((p) => p.token === token);
+        // Room membership (MongoDB) is the source of truth for "in a room". This
+        // covers the LOBBY too (before any game state exists in Redis). Mobile
+        // browsers drop the socket frequently; if we only restored when a game
+        // state existed, a reconnect during the lobby would lose currentRoom and
+        // later plays would fail with "you are not in a room".
+        const room = await Room.findOne({ code: roomCode }).exec();
+        const inRoom = !!room && room.players.some((p) => p.token === token);
 
-        if (isMember && gameState) {
+        if (inRoom) {
           socket.data.currentRoom = roomCode;
           socket.join(roomCode);
-          const updated: GameState = {
-            ...gameState,
-            players: gameState.players.map((p) =>
-              p.token === token ? { ...p, isConnected: true } : p,
-            ),
-          };
-          await redis.set(`game:${roomCode}`, JSON.stringify(updated), 'EX', GAME_TTL_S);
-          const engine = getEngine(updated.variant);
-          io.to(token).emit('game:stateUpdate', engine.personalizeState(updated, token));
+
+          // If a game is in progress, mark this player reconnected and resend state
+          const stateRaw = await redis.get(`game:${roomCode}`);
+          if (stateRaw) {
+            const gameState = JSON.parse(stateRaw) as GameState;
+            if (gameState.players.some((p) => p.token === token)) {
+              const updated: GameState = {
+                ...gameState,
+                players: gameState.players.map((p) =>
+                  p.token === token ? { ...p, isConnected: true } : p,
+                ),
+              };
+              await redis.set(`game:${roomCode}`, JSON.stringify(updated), 'EX', GAME_TTL_S);
+              const engine = getEngine(updated.variant);
+              io.to(token).emit('game:stateUpdate', engine.personalizeState(updated, token));
+            }
+          }
         } else {
-          // Stale session — drop it so it can't interfere with a new room/game
+          // Stale session — player no longer in that room; drop it
           await redis.del(`session:${token}`);
         }
       }

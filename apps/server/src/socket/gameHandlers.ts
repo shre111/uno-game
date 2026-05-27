@@ -14,6 +14,28 @@ function getEngine(variant?: string) {
   return ClassicUNO;
 }
 
+/**
+ * Resolve the player's room. Normally this is `socket.data.currentRoom`, but a
+ * mobile socket that reconnected may not have had it restored yet (or the action
+ * raced the reconnect handler). Fall back to MongoDB room membership so a genuine
+ * in-room player isn't wrongly told "you are not in a room".
+ */
+async function resolveRoom(socket: IoSocket): Promise<string | null> {
+  if (socket.data.currentRoom) return socket.data.currentRoom;
+  try {
+    const token = socket.data.guest.token;
+    const room = await Room.findOne({ 'players.token': token }).exec();
+    if (room) {
+      socket.data.currentRoom = room.code;
+      socket.join(room.code);
+      return room.code;
+    }
+  } catch {
+    // ignore — fall through to null
+  }
+  return null;
+}
+
 // ── Turn timeout enforcement ──────────────────────────────────────────────────
 // Per-room timers that auto-advance the turn if the active player doesn't act in
 // time. Single-process in-memory map (matches the disconnect-timer approach).
@@ -136,7 +158,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
   // ── game:start ─────────────────────────────────────────────────────────────
   socket.on('game:start', async (data) => {
     try {
-      const roomCode = socket.data.currentRoom;
+      const roomCode = await resolveRoom(socket);
       if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
 
       const room = await Room.findOne({ code: roomCode }).exec();
@@ -178,7 +200,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
   // ── game:playCard ──────────────────────────────────────────────────────────
   socket.on('game:playCard', async ({ cardIndex, chosenColor }) => {
     try {
-      const roomCode = socket.data.currentRoom;
+      const roomCode = await resolveRoom(socket);
       if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
 
       const raw = await getGameState(roomCode);
@@ -204,7 +226,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
   // ── game:drawCard ──────────────────────────────────────────────────────────
   socket.on('game:drawCard', async () => {
     try {
-      const roomCode = socket.data.currentRoom;
+      const roomCode = await resolveRoom(socket);
       if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
 
       const raw = await getGameState(roomCode);
@@ -236,7 +258,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
   // ── game:callUNO ───────────────────────────────────────────────────────────
   socket.on('game:callUNO', async () => {
     try {
-      const roomCode = socket.data.currentRoom;
+      const roomCode = await resolveRoom(socket);
       if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
 
       const raw = await getGameState(roomCode);
@@ -260,7 +282,7 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
   // ── game:challengeUNO ──────────────────────────────────────────────────────
   socket.on('game:challengeUNO', async (data) => {
     try {
-      const roomCode = socket.data.currentRoom;
+      const roomCode = await resolveRoom(socket);
       if (!roomCode) return emit('NOT_IN_ROOM', 'You are not in a room');
 
       const raw = await getGameState(roomCode);

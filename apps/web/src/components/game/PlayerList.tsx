@@ -1,12 +1,33 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useUiStore } from '../../store/uiStore';
 import { emit } from '../../lib/socket';
 import type { ChatMessage } from '../../types';
+
+// Calls `onOutside` when a pointerdown lands outside `ref`, while `active`.
+// Skips when the element is hidden (e.g. display:none at the current breakpoint)
+// so a hidden desktop/mobile variant can't steal the close.
+function useClickOutside(
+  ref: React.RefObject<HTMLElement>,
+  onOutside: () => void,
+  active: boolean,
+) {
+  useEffect(() => {
+    if (!active) return;
+    function onDown(e: PointerEvent) {
+      const el = ref.current;
+      if (!el || el.getClientRects().length === 0) return;
+      if (!el.contains(e.target as Node)) onOutside();
+    }
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [ref, onOutside, active]);
+}
 
 // ─── TurnTimer ──────────────────────────────────────────────────────────────
 
@@ -95,9 +116,12 @@ export function SoundControl() {
   const setSoundEnabled = useSettingsStore((s) => s.setSoundEnabled);
   const setVolume = useSettingsStore((s) => s.setVolume);
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useClickOutside(ref, close, open);
 
   return (
-    <div className="absolute top-2 right-2 z-40 flex flex-col items-end gap-1">
+    <div ref={ref} className="absolute top-2 right-2 z-40 flex flex-col items-end gap-1">
       <button
         className="w-9 h-9 rounded-full bg-black/50 border border-white/15 text-white/80 flex items-center justify-center text-base shadow"
         onClick={() => setOpen((v) => !v)}
@@ -179,10 +203,15 @@ export function FloatingReactions() {
 
 // Quick reactions launcher button + emoji tray, available during play
 export function ReactionBar() {
-  const [open, setOpen] = useState(false);
+  const open = useUiStore((s) => s.openPanel === 'reactions');
+  const togglePanel = useUiStore((s) => s.togglePanel);
+  const setOpenPanel = useUiStore((s) => s.setOpenPanel);
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpenPanel(null), [setOpenPanel]);
+  useClickOutside(ref, close, open);
 
   return (
-    <div className="fixed bottom-4 right-20 z-40 flex flex-col items-end gap-2">
+    <div ref={ref} className="fixed bottom-4 right-20 z-40 flex flex-col items-end gap-2">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -205,7 +234,7 @@ export function ReactionBar() {
       </AnimatePresence>
       <button
         className="bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => togglePanel('reactions')}
         title="Send a reaction"
       >
         😀
@@ -253,19 +282,6 @@ function ChatPanel() {
         ))}
       </div>
 
-      {/* reactions — tap to broadcast a floating emoji to everyone */}
-      <div className="flex flex-wrap gap-1.5 px-3 py-2 border-t border-white/10">
-        {REACTIONS.map((r) => (
-          <button
-            key={r}
-            className="text-2xl hover:scale-125 active:scale-90 transition-transform"
-            onClick={() => emit.sendReaction(r)}
-          >
-            {r}
-          </button>
-        ))}
-      </div>
-
       {/* input */}
       <div className="flex gap-2 p-2 border-t border-white/10">
         <input
@@ -288,12 +304,20 @@ function ChatPanel() {
 }
 
 export function GameChat() {
-  const [open, setOpen] = useState(false);
+  const open = useUiStore((s) => s.openPanel === 'chat');
+  const togglePanel = useUiStore((s) => s.togglePanel);
+  const setOpenPanel = useUiStore((s) => s.setOpenPanel);
+  const desktopRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpenPanel(null), [setOpenPanel]);
+  useClickOutside(desktopRef, close, open);
+
+  // Don't leave a panel open across games
+  useEffect(() => () => setOpenPanel(null), [setOpenPanel]);
 
   return (
     <>
       {/* Desktop: fixed bottom-right floating panel */}
-      <div className="hidden sm:block fixed bottom-4 right-4 z-40">
+      <div ref={desktopRef} className="hidden sm:block fixed bottom-4 right-4 z-40">
         <AnimatePresence>
           {open && (
             <motion.div
@@ -309,7 +333,7 @@ export function GameChat() {
         </AnimatePresence>
         <button
           className="bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => togglePanel('chat')}
         >
           💬
         </button>
@@ -320,7 +344,7 @@ export function GameChat() {
         {/* toggle button */}
         <button
           className="fixed bottom-4 right-4 z-40 bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => togglePanel('chat')}
         >
           💬
         </button>
@@ -334,7 +358,7 @@ export function GameChat() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setOpen(false)}
+                onClick={() => setOpenPanel(null)}
               />
               {/* sheet */}
               <motion.div
