@@ -10,7 +10,7 @@ function getEngine(variant?: string) {
 }
 import { generateGuestToken, verifyGuestToken } from '../middleware/auth';
 import { getRedisClient } from '../config/redis';
-import { registerRoomHandlers } from './roomHandlers';
+import { registerRoomHandlers, toRoomPayload } from './roomHandlers';
 import { registerGameHandlers, clearTurnTimer } from './gameHandlers';
 import { registerChatHandlers } from './chatHandlers';
 import { Room } from '../models/room.model';
@@ -100,9 +100,12 @@ export function createSocketServer(httpServer: HttpServer): IoServer {
         const room = await Room.findOne({ code: roomCode }).exec();
         const inRoom = !!room && room.players.some((p) => p.token === token);
 
-        if (inRoom) {
+        if (inRoom && room) {
           socket.data.currentRoom = roomCode;
           socket.join(roomCode);
+
+          // Re-send the room payload so the lobby re-renders after a reconnect
+          socket.emit('room:updated', toRoomPayload(room));
 
           // If a game is in progress, mark this player reconnected and resend state
           const stateRaw = await redis.get(`game:${roomCode}`);

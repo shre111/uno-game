@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket } from '../../../hooks/useSocket';
 import { useGameStore } from '../../../store/gameStore';
 import { useAuthStore } from '../../../store/authStore';
-import { emit } from '../../../lib/socket';
+import { emit, getSocket } from '../../../lib/socket';
 import type { HouseRules } from '../../../types';
 
 const VARIANTS = ['Classic', 'Flip', 'Mercy'] as const;
@@ -90,6 +90,17 @@ export default function LobbyPage() {
       router.push(`/room/${code}`);
     }
   }, [gameState, code, router]);
+
+  // Re-sync the room state on mount and on every (re)connect. Mobile sockets
+  // drop often; without this the lobby can get stuck on "Connecting…" or miss
+  // players who joined while we were briefly disconnected.
+  useEffect(() => {
+    const socket = getSocket();
+    const doSync = () => emit.syncRoom(code);
+    doSync();
+    socket.on('connect', doSync);
+    return () => { socket.off('connect', doSync); };
+  }, [code]);
 
   async function copyLink() {
     const inviteUrl = `${window.location.origin}/join/${code}`;

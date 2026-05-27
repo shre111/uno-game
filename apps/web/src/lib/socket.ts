@@ -47,6 +47,8 @@ export const emit = {
 
   leaveRoom: () => getSocket().emit('room:leave'),
 
+  syncRoom: (code: string) => getSocket().emit('room:sync', { code }),
+
   startGame: (houseRules?: HouseRules) => getSocket().emit('game:start', { houseRules }),
 
   playCard: (cardIndex: number, chosenColor?: CardColor) =>

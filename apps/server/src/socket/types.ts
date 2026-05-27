@@ -77,6 +77,7 @@ export interface ClientToServerEvents {
   'room:create': (data: CreateRoomData) => void;
   'room:join': (data: JoinRoomData) => void;
   'room:leave': () => void;
+  'room:sync': (data: { code: string }) => void;
   'game:start': (data?: { houseRules?: HouseRules }) => void;
   'game:playCard': (data: PlayCardData) => void;
   'game:drawCard': () => void;

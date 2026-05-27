@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket } from '../../../hooks/useSocket';
 import { useGameStore } from '../../../store/gameStore';
 import { GameBoard } from '../../../components/game/Board';
-import { emit } from '../../../lib/socket';
+import { emit, getSocket } from '../../../lib/socket';
 
 function WinOverlay({
   winnerUsername,
@@ -98,12 +98,25 @@ function Connecting() {
 
 export default function RoomPage() {
   const router = useRouter();
+  const params = useParams();
+  const code = (params.code as string)?.toUpperCase();
   useSocket();
 
   const gameState = useGameStore((s) => s.gameState);
   const gameEndResult = useGameStore((s) => s.gameEndResult);
   const { setGameEndResult, reset } = useGameStore();
   const confettiFired = useRef(false);
+
+  // Re-sync game/room state on mount and on every (re)connect, so a mobile
+  // refresh or dropped socket doesn't leave the board stuck on "Joining…".
+  useEffect(() => {
+    if (!code) return;
+    const socket = getSocket();
+    const doSync = () => emit.syncRoom(code);
+    doSync();
+    socket.on('connect', doSync);
+    return () => { socket.off('connect', doSync); };
+  }, [code]);
 
   // Fire confetti once when game ends
   useEffect(() => {
