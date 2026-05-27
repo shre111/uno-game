@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket } from '../../../hooks/useSocket';
 import { useGameStore } from '../../../store/gameStore';
+import { useAuthStore } from '../../../store/authStore';
 import { GameBoard } from '../../../components/game/Board';
 import { emit, getSocket } from '../../../lib/socket';
 
@@ -12,12 +13,14 @@ function WinOverlay({
   winnerUsername,
   durationMs,
   players,
+  isHost,
   onPlayAgain,
   onHome,
 }: {
   winnerUsername: string;
   durationMs: number;
   players: Array<{ token: string; username: string; cardCount: number }>;
+  isHost: boolean;
   onPlayAgain: () => void;
   onHome: () => void;
 }) {
@@ -73,12 +76,21 @@ function WinOverlay({
           >
             Home
           </button>
-          <button
-            onClick={onPlayAgain}
-            className="flex-1 py-3 rounded-xl font-black text-white bg-red-600 hover:bg-red-500 shadow-lg shadow-red-900/40 transition-colors"
-          >
-            Play Again
-          </button>
+          {isHost ? (
+            <button
+              onClick={onPlayAgain}
+              className="flex-1 py-3 rounded-xl font-black text-white bg-red-600 hover:bg-red-500 shadow-lg shadow-red-900/40 transition-colors"
+            >
+              Play Again
+            </button>
+          ) : (
+            <button
+              disabled
+              className="flex-1 py-3 rounded-xl font-bold text-white/40 bg-white/5 border border-white/10 cursor-not-allowed"
+            >
+              Waiting for host…
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -104,8 +116,11 @@ export default function RoomPage() {
 
   const gameState = useGameStore((s) => s.gameState);
   const gameEndResult = useGameStore((s) => s.gameEndResult);
+  const room = useGameStore((s) => s.room);
+  const myToken = useAuthStore((s) => s.token);
   const { setGameEndResult, reset } = useGameStore();
   const confettiFired = useRef(false);
+  const isHost = !!room && !!myToken && room.host === myToken;
 
   // Re-sync game/room state on mount and on every (re)connect, so a mobile
   // refresh or dropped socket doesn't leave the board stuck on "Joining…".
@@ -131,10 +146,10 @@ export default function RoomPage() {
   }, [gameEndResult]);
 
   function handlePlayAgain() {
-    const code = gameState?.roomCode;
-    setGameEndResult(null);
+    // Host restarts in place — the server resets the finished room and re-deals,
+    // and the resulting game:started clears the overlay for everyone.
     confettiFired.current = false;
-    if (code) router.push(`/lobby/${code}`);
+    emit.startGame();
   }
 
   function handleHome() {
@@ -157,6 +172,7 @@ export default function RoomPage() {
             winnerUsername={gameEndResult.winnerUsername}
             durationMs={gameEndResult.durationMs}
             players={gameEndResult.players}
+            isHost={isHost}
             onPlayAgain={handlePlayAgain}
             onHome={handleHome}
           />

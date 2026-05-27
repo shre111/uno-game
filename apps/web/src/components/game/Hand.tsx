@@ -94,6 +94,8 @@ export function PlayerHand() {
 
   // Responsive fan: smaller on mobile
   const fanOffset = Math.min(52, Math.floor(560 / Math.max(visibleHand.length, 1)));
+  // Mobile: overlap cards once there are many so they fit instead of running off-screen
+  const mobileOverlap = Math.max(0, Math.min(32, (visibleHand.length - 6) * 5));
 
   return (
     <div className="flex flex-col items-center gap-1 w-full px-2">
@@ -184,7 +186,7 @@ export function PlayerHand() {
                 initial={isNew ? { y: -30, opacity: 0 } : false}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 22, delay: isDealing ? i * 0.05 : 0 }}
-                style={{ zIndex: draggingId === card.id ? 100 : undefined }}
+                style={{ marginLeft: i === 0 ? 0 : -mobileOverlap, zIndex: draggingId === card.id ? 100 : i }}
               >
                 <motion.div
                   drag={playable ? 'y' : false}

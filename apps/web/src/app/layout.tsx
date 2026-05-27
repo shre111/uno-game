@@ -46,6 +46,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {children}
         <Toaster
           position="top-center"
+          offset={76}
           toastOptions={{
             style: {
               background: '#1a1a2e',

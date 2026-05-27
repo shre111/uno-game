@@ -101,7 +101,8 @@ export function registerChatHandlers(io: IoServer, socket: IoSocket): void {
     }
 
     const safeMime = String(mime || 'audio/webm').slice(0, 40);
-    // Broadcast to everyone in the room INCLUDING the sender (they hear their own)
-    io.to(roomCode).emit('voice:received', { from: token, username, audio, mime: safeMime });
+    // Broadcast to everyone in the room EXCEPT the sender — the sender already
+    // previewed their own clip before sending, so they don't need to hear it again.
+    socket.to(roomCode).emit('voice:received', { from: token, username, audio, mime: safeMime });
   });
 }

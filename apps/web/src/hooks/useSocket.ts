@@ -54,7 +54,11 @@ export function useSocket() {
 
       socket.on('room:left', () => setRoom(null));
 
-      socket.on('game:started', (state: PersonalizedGameState) => setGameState(state));
+      socket.on('game:started', (state: PersonalizedGameState) => {
+        // A fresh game (incl. a rematch) — dismiss any lingering win overlay for everyone
+        setGameEndResult(null);
+        setGameState(state);
+      });
 
       socket.on('game:stateUpdate', (state: PersonalizedGameState) => setGameState(state));
 

@@ -227,7 +227,7 @@ export function ReactionBar() {
   useClickOutside(ref, close, open);
 
   return (
-    <div ref={ref} className="fixed bottom-4 right-20 z-40 flex flex-col items-end gap-2">
+    <div ref={ref} className="fixed bottom-28 right-20 sm:bottom-4 z-40 flex flex-col items-end gap-2">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -344,7 +344,7 @@ export function VoiceButton() {
   }, []);
 
   return (
-    <div className="fixed bottom-4 right-36 z-40 flex flex-col items-end gap-2">
+    <div className="fixed bottom-28 right-36 sm:bottom-4 z-40 flex flex-col items-end gap-2">
       <AnimatePresence>
         {phase === 'preview' && previewUrl && (
           <motion.div
@@ -487,9 +487,9 @@ export function GameChat() {
 
       {/* Mobile: full-width bottom sheet */}
       <div className="sm:hidden">
-        {/* toggle button */}
+        {/* toggle button — sits above the hand so it doesn't cover the cards */}
         <button
-          className="fixed bottom-4 right-4 z-40 bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
+          className="fixed bottom-28 right-4 z-40 bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
           onClick={() => togglePanel('chat')}
         >
           💬

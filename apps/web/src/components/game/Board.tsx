@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { emit } from '../../lib/socket';
@@ -47,15 +46,11 @@ export function GameBoard() {
   const showUnoButton = myHandCount === 1;
   const isDarkSide = gameState.side === 'dark';
 
-  // Turn reminder toast + chime
+  // Turn chime (the green "Your turn" pill already shows the turn, so no toast)
   useEffect(() => {
     if (!currentTurnToken) return;
-    if (isMyTurn) {
-      toast('Your turn!', { duration: 2000, icon: '🃏' });
-      playMyTurnChime();
-    } else {
-      playTurnTick();
-    }
+    if (isMyTurn) playMyTurnChime();
+    else playTurnTick();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTurnToken]);
 
