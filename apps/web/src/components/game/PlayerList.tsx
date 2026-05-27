@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -113,8 +114,10 @@ export function ChatToast() {
 export function SoundControl() {
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const volume = useSettingsStore((s) => s.volume);
+  const voiceEnabled = useSettingsStore((s) => s.voiceEnabled);
   const setSoundEnabled = useSettingsStore((s) => s.setSoundEnabled);
   const setVolume = useSettingsStore((s) => s.setVolume);
+  const setVoiceEnabled = useSettingsStore((s) => s.setVoiceEnabled);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -162,6 +165,19 @@ export function SoundControl() {
                 onChange={(e) => setVolume(Number(e.target.value))}
                 className="flex-1 accent-green-500 disabled:opacity-40"
               />
+            </div>
+            <div className="flex items-center justify-between border-t border-white/10 pt-2">
+              <span className="text-white/80 text-xs font-semibold">Voice notes</span>
+              <button
+                onClick={() => setVoiceEnabled(!voiceEnabled)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${voiceEnabled ? 'bg-green-600' : 'bg-white/15'}`}
+              >
+                <motion.div
+                  className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow"
+                  animate={{ x: voiceEnabled ? 20 : 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              </button>
             </div>
           </motion.div>
         )}
@@ -238,6 +254,136 @@ export function ReactionBar() {
         title="Send a reaction"
       >
         😀
+      </button>
+    </div>
+  );
+}
+
+// ─── VoiceButton ─────────────────────────────────────────────────────────────
+
+function pickAudioMime(): string {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  for (const c of candidates) {
+    if (MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return '';
+}
+
+// Record → preview → send ephemeral voice notes. Recorded in the browser; on
+// send, relayed straight to the room (no storage). Capped at 10s. The preview
+// step lets you hear your own clip (native <audio>, gesture-driven) before sending.
+type VoicePhase = 'idle' | 'recording' | 'preview';
+
+export function VoiceButton() {
+  const [phase, setPhase] = useState<VoicePhase>('idle');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const blobRef = useRef<Blob | null>(null);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopRecording = useCallback(() => {
+    if (stopTimerRef.current) { clearTimeout(stopTimerRef.current); stopTimerRef.current = null; }
+    const rec = recorderRef.current;
+    if (rec && rec.state !== 'inactive') rec.stop();
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      if (!streamRef.current) {
+        streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      const mime = pickAudioMime();
+      const rec = new MediaRecorder(streamRef.current, mime ? { mimeType: mime } : undefined);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        const type = rec.mimeType || mime || 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type });
+        blobRef.current = blob;
+        setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return blob.size > 800 ? URL.createObjectURL(blob) : null; });
+        if (blob.size > 800) {
+          setPhase('preview');
+        } else {
+          setPhase('idle');
+          toast('Recording too short — tap and speak, then tap stop', { duration: 2500 });
+        }
+      };
+      recorderRef.current = rec;
+      rec.start();
+      setPhase('recording');
+      stopTimerRef.current = setTimeout(() => stopRecording(), 10_000); // 10s cap
+    } catch {
+      toast.error('Allow microphone access to record voice notes');
+      setPhase('idle');
+    }
+  }, [stopRecording]);
+
+  const discard = useCallback(() => {
+    setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    blobRef.current = null;
+    setPhase('idle');
+  }, []);
+
+  const send = useCallback(() => {
+    const blob = blobRef.current;
+    if (blob && blob.size > 800 && blob.size <= 300_000) {
+      blob.arrayBuffer()
+        .then((buf) => { emit.sendVoice(buf, blob.type); toast('🎤 Voice note sent', { duration: 1500 }); })
+        .catch(() => {});
+    }
+    discard();
+  }, [discard]);
+
+  // Clean up the mic stream + any preview URL on unmount
+  useEffect(() => () => {
+    if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+  }, []);
+
+  return (
+    <div className="fixed bottom-4 right-36 z-40 flex flex-col items-end gap-2">
+      <AnimatePresence>
+        {phase === 'preview' && previewUrl && (
+          <motion.div
+            className="bg-gray-900/95 border border-white/10 rounded-2xl p-3 shadow-2xl flex flex-col gap-2 w-60"
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+          >
+            <span className="text-white/70 text-xs font-semibold">Preview your voice note</span>
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <audio src={previewUrl} controls className="w-full h-9" />
+            <div className="flex gap-2">
+              <button
+                onClick={discard}
+                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/20"
+              >
+                Discard
+              </button>
+              <button
+                onClick={send}
+                className="flex-1 py-2 rounded-lg text-sm font-bold text-white bg-green-600 hover:bg-green-500"
+              >
+                Send
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        className={`rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl border text-white ${
+          phase === 'recording' ? 'bg-red-600 border-white animate-pulse scale-110' : 'bg-gray-900 hover:bg-gray-800 border-white/20'
+        }`}
+        onClick={() => {
+          if (phase === 'recording') stopRecording();
+          else if (phase === 'idle') void startRecording();
+        }}
+        title={phase === 'recording' ? 'Tap to stop' : 'Tap to record a voice note'}
+      >
+        {phase === 'recording' ? '⏹' : '🎤'}
       </button>
     </div>
   );

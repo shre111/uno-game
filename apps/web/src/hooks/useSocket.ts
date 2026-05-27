@@ -3,9 +3,10 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { getSocket, connectSocket, updateSocketAuth } from '../lib/socket';
-import { playMessagePop } from '../lib/sound';
+import { playMessagePop, playVoiceClip } from '../lib/sound';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
+import { useSettingsStore } from '../store/settingsStore';
 import type { RoomPayload, ChatMessage, GameEndResult } from '../types';
 import type { PersonalizedGameState } from '../types';
 
@@ -112,6 +113,15 @@ export function useSocket() {
 
       socket.on('reaction:received', ({ emoji, username }: { emoji: string; token: string; username: string }) => {
         addLiveReaction({ emoji, username });
+      });
+
+      socket.on('voice:received', ({ from, username, audio }: { from: string; username: string; audio: ArrayBuffer; mime: string }) => {
+        if (!useSettingsStore.getState().voiceEnabled) return;
+        const isMine = from === useAuthStore.getState().token;
+        const label = isMine ? '🎤 You' : `🎤 ${username}`;
+        playVoiceClip(audio).then((ok) => {
+          toast(ok ? label : `${label} sent a voice note`, { duration: ok ? 2500 : 3000 });
+        });
       });
 
       socket.on('error', (err: { code: string; message: string }) => {

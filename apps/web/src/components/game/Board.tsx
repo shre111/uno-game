@@ -10,7 +10,7 @@ import { playMyTurnChime, playTurnTick, playCardWhoosh, playDrawSnap } from '../
 // Game-end overlay is handled by the parent room page (with confetti)
 import { DrawPile, DiscardPile } from './Deck';
 import { PlayerHand, OpponentHand, CompactOpponentBadge } from './Hand';
-import { TurnTimer, GameChat, ChatToast, ReactionBar, FloatingReactions, SoundControl } from './PlayerList';
+import { TurnTimer, GameChat, ChatToast, ReactionBar, FloatingReactions, SoundControl, VoiceButton } from './PlayerList';
 
 const OPPONENT_POSITIONS: Record<number, string[]> = {
   2: ['top-center'],
@@ -301,6 +301,7 @@ export function GameBoard() {
       <ChatToast />
       <GameChat />
       <ReactionBar />
+      <VoiceButton />
       <FloatingReactions />
       <SoundControl />
     </div>

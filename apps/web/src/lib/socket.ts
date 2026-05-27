@@ -62,4 +62,6 @@ export const emit = {
   sendChat: (message: string) => getSocket().emit('chat:send', { message }),
 
   sendReaction: (emoji: string) => getSocket().emit('reaction:send', { emoji }),
+
+  sendVoice: (audio: ArrayBuffer, mime: string) => getSocket().emit('voice:send', { audio, mime }),
 };

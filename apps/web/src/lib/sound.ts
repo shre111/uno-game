@@ -82,3 +82,26 @@ export function playDrawSnap(): void {
   tone(960, 70, 'square', 0.09, 0);
   tone(620, 80, 'square', 0.07, 0.04);
 }
+
+// Play a received voice-note clip through the (already-unlocked) Web Audio
+// context. Using Web Audio rather than an <audio> element avoids Chrome's
+// separate, stricter autoplay gate on media elements. Returns true on success.
+// Not gated by soundEnabled — voice has its own toggle handled by the caller.
+export async function playVoiceClip(buf: ArrayBuffer): Promise<boolean> {
+  const c = getCtx();
+  if (!c) return false;
+  try {
+    if (c.state === 'suspended') await c.resume();
+    // decodeAudioData detaches the buffer, so decode a copy
+    const audioBuf = await c.decodeAudioData(buf.slice(0));
+    const src = c.createBufferSource();
+    src.buffer = audioBuf;
+    const gain = c.createGain();
+    gain.gain.value = 1;
+    src.connect(gain).connect(c.destination);
+    src.start();
+    return true;
+  } catch {
+    return false;
+  }
+}
