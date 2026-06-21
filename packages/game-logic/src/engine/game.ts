@@ -257,6 +257,21 @@ export const ClassicUNO = {
     return { ...patchPlayer(state, playerToken, { hasCalledUno: true }), lastAction: { type: 'uno', playerToken } };
   },
 
+  // Penalty for calling UNO at the wrong time (more than 1 card in hand) — the
+  // caller draws `count` cards. Does not change whose turn it is.
+  penalizeFalseUno(state: GameState, playerToken: string, count = 2): GameState {
+    const idx = state.players.findIndex((p) => p.token === playerToken);
+    if (idx < 0) return state;
+    const { state: after, cards } = pullCards(state, count);
+    if (cards.length === 0) return state;
+    const player = after.players[idx]!;
+    return {
+      ...after,
+      players: after.players.map((p, i) => i === idx ? { ...p, hand: [...player.hand, ...cards] } : p),
+      lastAction: { type: 'challenge', challengerToken: playerToken, penalizedToken: playerToken, successful: false },
+    };
+  },
+
   // Pass the turn to the next player without any action (used on turn timeout)
   forceSkipTurn(state: GameState): GameState {
     return {
@@ -561,6 +576,7 @@ export const FlipUNO = {
   callUNO: ClassicUNO.callUNO,
   challengeUNO: ClassicUNO.challengeUNO,
   forceSkipTurn: ClassicUNO.forceSkipTurn,
+  penalizeFalseUno: ClassicUNO.penalizeFalseUno,
 
   personalizeState(state: GameState, playerToken: string): PersonalizedGameState {
     return {
@@ -828,6 +844,7 @@ export const MercyUNO = {
 
   callUNO: ClassicUNO.callUNO,
   challengeUNO: ClassicUNO.challengeUNO,
+  penalizeFalseUno: ClassicUNO.penalizeFalseUno,
 
   forceSkipTurn(state: GameState): GameState {
     return {

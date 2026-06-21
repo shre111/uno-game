@@ -140,6 +140,8 @@ export function useSocket() {
           toast.error('That card cannot be played right now');
         } else if (err.code === 'NOT_YOUR_TURN') {
           toast.error('It\'s not your turn');
+        } else if (err.code === 'FALSE_UNO') {
+          toast.error('🃏 False UNO call — +2 cards!', { duration: 3000 });
         } else if (err.code === 'FORGOT_UNO' || msg.toLowerCase().includes('uno')) {
           toast.error(`Penalty! ${msg}`);
         } else {

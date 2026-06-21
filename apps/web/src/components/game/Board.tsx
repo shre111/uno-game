@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
@@ -42,9 +42,33 @@ export function GameBoard() {
   const rightSlotFree = !positions.includes('right-center');
   const currentTurnToken = gameState.players[gameState.currentPlayerIndex]?.token;
   const isMyTurn = currentTurnToken === myToken;
-  const myHandCount = gameState.myHand.length;
-  const showUnoButton = myHandCount === 1;
   const isDarkSide = gameState.side === 'dark';
+
+  // Grace period (ms) before the catch button appears after an opponent reaches
+  // one card — gives them a chance to call UNO themselves first.
+  const CATCH_GRACE_MS = 3000;
+  const reachedOneAtRef = useRef<Map<string, number>>(new Map());
+  const [, forceTick] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const now = Date.now();
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const stillInWindow = new Set<string>();
+    for (const p of gameState.players) {
+      if (p.token === myToken) continue;
+      if (p.handCount === 1 && !p.hasCalledUno) {
+        stillInWindow.add(p.token);
+        if (!reachedOneAtRef.current.has(p.token)) {
+          reachedOneAtRef.current.set(p.token, now);
+          timers.push(setTimeout(() => forceTick(), CATCH_GRACE_MS + 50));
+        }
+      }
+    }
+    // Clear timestamps for opponents who left the window (called UNO or played again)
+    for (const tk of Array.from(reachedOneAtRef.current.keys())) {
+      if (!stillInWindow.has(tk)) reachedOneAtRef.current.delete(tk);
+    }
+    return () => { timers.forEach(clearTimeout); };
+  }, [gameState.players, myToken]);
 
   // Turn chime (the green "Your turn" pill already shows the turn, so no toast)
   useEffect(() => {
@@ -236,11 +260,17 @@ export function GameBoard() {
         <PlayerHand />
       </div>
 
-      {/* Catch alert — prominent top-center button per accusable opponent */}
+      {/* Catch alert — prominent top-center button per accusable opponent.
+          Only shown after a short grace period so the player has a chance to
+          call UNO themselves first. */}
       {(() => {
-        const accusable = gameState.players.filter(
-          (p) => p.token !== myToken && p.handCount === 1 && !p.hasCalledUno,
-        );
+        const now = Date.now();
+        const accusable = gameState.players.filter((p) => {
+          if (p.token === myToken) return false;
+          if (p.handCount !== 1 || p.hasCalledUno) return false;
+          const startedAt = reachedOneAtRef.current.get(p.token);
+          return startedAt !== undefined && now - startedAt >= CATCH_GRACE_MS;
+        });
         if (accusable.length === 0) return null;
         return (
           <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 max-w-[92vw] px-2">
@@ -261,22 +291,18 @@ export function GameBoard() {
         );
       })()}
 
-      {/* Call UNO button — bottom, when you reach 1 card */}
-      <AnimatePresence>
-        {showUnoButton && (
-          <motion.button
-            className="absolute bottom-36 left-1/2 z-30 bg-red-600 hover:bg-red-500 text-white font-black text-base px-7 py-3 rounded-xl border border-white/30 shadow-lg"
-            style={{ x: '-50%' }}
-            initial={{ y: 20, opacity: 0, scale: 0.8 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 20, opacity: 0 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={() => emit.callUNO()}
-          >
-            Call Uno!
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Call UNO button — always available. Tapping with more than 1 card
+          triggers a false-call penalty (+2 cards) on the server. */}
+      <motion.button
+        className="absolute bottom-36 left-1/2 z-30 bg-red-600 hover:bg-red-500 text-white font-black text-base px-7 py-3 rounded-xl border border-white/30 shadow-lg"
+        style={{ x: '-50%' }}
+        initial={{ y: 20, opacity: 0, scale: 0.8 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        whileTap={{ scale: 0.92 }}
+        onClick={() => emit.callUNO()}
+      >
+        Call Uno!
+      </motion.button>
 
       {/* UNO alert toast */}
       <AnimatePresence>

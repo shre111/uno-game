@@ -269,6 +269,16 @@ export function registerGameHandlers(io: IoServer, socket: IoSocket): void {
       if (!player) return emit('PLAYER_NOT_FOUND', 'Player not found in game');
 
       const engine = getEngine(state.variant);
+
+      // False-call penalty — calling UNO with more (or fewer) than 1 card costs 2 cards.
+      // Idempotent: if you already legitimately called UNO, calling again is a no-op.
+      if (player.hand.length !== 1) {
+        const penalized = engine.penalizeFalseUno(state, socket.data.guest.token, 2);
+        await setGameState(roomCode, penalized as unknown as Record<string, unknown>);
+        emitPersonalizedToAll(io, penalized);
+        return emit('FALSE_UNO', 'False UNO call — +2 cards!');
+      }
+
       const newState = engine.callUNO(state, socket.data.guest.token);
       await setGameState(roomCode, newState as unknown as Record<string, unknown>);
 
