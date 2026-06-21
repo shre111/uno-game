@@ -6,6 +6,7 @@ import { Card } from './Card';
 import { ColorPicker } from './ColorPicker';
 import { useGameStore } from '../../store/gameStore';
 import { useAuthStore } from '../../store/authStore';
+import { useUiStore } from '../../store/uiStore';
 import { emit } from '../../lib/socket';
 import { playCardWhoosh } from '../../lib/sound';
 import { isCardPlayable } from '@uno-game/game-logic';
@@ -16,6 +17,7 @@ export function PlayerHand() {
   const myToken = useAuthStore((s) => s.token);
   const [colorPickerCard, setColorPickerCard] = useState<CardType | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const setIsDraggingCard = useUiStore((s) => s.setIsDraggingCard);
   // Cards optimistically removed from the hand the instant they're played (before
   // the server confirms) so dropping a card feels immediate with no snap-back.
   const [pendingPlayIds, setPendingPlayIds] = useState<Set<string>>(new Set());
@@ -154,9 +156,10 @@ export function PlayerHand() {
                   dragSnapToOrigin
                   dragElastic={0.4}
                   dragMomentum={false}
-                  onDragStart={() => setDraggingId(card.id)}
+                  onDragStart={() => { setDraggingId(card.id); setIsDraggingCard(true); }}
                   onDragEnd={(_, info) => {
                     setDraggingId(null);
+                    setIsDraggingCard(false);
                     if (info.offset.y < -90) playByDrag(card);
                   }}
                   whileDrag={{ scale: 1.12 }}
@@ -193,9 +196,10 @@ export function PlayerHand() {
                   dragSnapToOrigin
                   dragElastic={0.4}
                   dragMomentum={false}
-                  onDragStart={() => setDraggingId(card.id)}
+                  onDragStart={() => { setDraggingId(card.id); setIsDraggingCard(true); }}
                   onDragEnd={(_, info) => {
                     setDraggingId(null);
+                    setIsDraggingCard(false);
                     if (info.offset.y < -70) playByDrag(card);
                   }}
                   whileDrag={{ scale: 1.15 }}

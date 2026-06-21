@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { useSocket } from '../hooks/useSocket';
 import { useGameStore } from '../store/gameStore';
 import { emit } from '../lib/socket';
@@ -107,6 +108,19 @@ export default function HomePage() {
   const [joinUsername, setJoinUsername] = useState('');
   const [joinAvatar, setJoinAvatar] = useState(AVATARS[0]!);
   const [joining, setJoining] = useState(false);
+
+  // Fail-safe: if the socket never responds (common on mobile with flaky
+  // connectivity), clear the loading state after a timeout so the button
+  // doesn't stay stuck on "Connecting…" forever.
+  useEffect(() => {
+    if (!creating && !joining) return;
+    const t = setTimeout(() => {
+      setCreating(false);
+      setJoining(false);
+      toast.error('Connection problem — please try again');
+    }, 12_000);
+    return () => clearTimeout(t);
+  }, [creating, joining]);
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();

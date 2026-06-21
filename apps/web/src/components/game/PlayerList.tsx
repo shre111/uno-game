@@ -222,12 +222,16 @@ export function ReactionBar() {
   const open = useUiStore((s) => s.openPanel === 'reactions');
   const togglePanel = useUiStore((s) => s.togglePanel);
   const setOpenPanel = useUiStore((s) => s.setOpenPanel);
+  const isDraggingCard = useUiStore((s) => s.isDraggingCard);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpenPanel(null), [setOpenPanel]);
   useClickOutside(ref, close, open);
 
   return (
-    <div ref={ref} className="fixed bottom-28 right-20 sm:bottom-4 z-40 flex flex-col items-end gap-2">
+    <div
+      ref={ref}
+      className={`fixed bottom-28 right-20 sm:bottom-4 z-40 flex flex-col items-end gap-2 transition-opacity ${isDraggingCard ? 'opacity-0 pointer-events-none sm:opacity-100 sm:pointer-events-auto' : ''}`}
+    >
       <AnimatePresence>
         {open && (
           <motion.div
@@ -278,6 +282,7 @@ type VoicePhase = 'idle' | 'recording' | 'preview';
 export function VoiceButton() {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const isDraggingCard = useUiStore((s) => s.isDraggingCard);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -344,7 +349,7 @@ export function VoiceButton() {
   }, []);
 
   return (
-    <div className="fixed bottom-28 right-36 sm:bottom-4 z-40 flex flex-col items-end gap-2">
+    <div className={`fixed bottom-28 right-36 sm:bottom-4 z-40 flex flex-col items-end gap-2 transition-opacity ${isDraggingCard ? 'opacity-0 pointer-events-none sm:opacity-100 sm:pointer-events-auto' : ''}`}>
       <AnimatePresence>
         {phase === 'preview' && previewUrl && (
           <motion.div
@@ -453,6 +458,7 @@ export function GameChat() {
   const open = useUiStore((s) => s.openPanel === 'chat');
   const togglePanel = useUiStore((s) => s.togglePanel);
   const setOpenPanel = useUiStore((s) => s.setOpenPanel);
+  const isDraggingCard = useUiStore((s) => s.isDraggingCard);
   const desktopRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpenPanel(null), [setOpenPanel]);
   useClickOutside(desktopRef, close, open);
@@ -487,9 +493,10 @@ export function GameChat() {
 
       {/* Mobile: full-width bottom sheet */}
       <div className="sm:hidden">
-        {/* toggle button — sits above the hand so it doesn't cover the cards */}
+        {/* toggle button — sits above the hand, and hides while a card is being
+            dragged so the dragged card has clear visual airspace */}
         <button
-          className="fixed bottom-28 right-4 z-40 bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl"
+          className={`fixed bottom-28 right-4 z-40 bg-gray-900 hover:bg-gray-800 border border-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg text-xl transition-opacity ${isDraggingCard ? 'opacity-0 pointer-events-none' : ''}`}
           onClick={() => togglePanel('chat')}
         >
           💬
